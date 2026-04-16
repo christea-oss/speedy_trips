@@ -16,53 +16,72 @@ For help getting started with Flutter development, view the
 [online documentation](https://docs.flutter.dev/), which offers tutorials,
 samples, guidance on mobile development, and a full API reference.
 
-# SpeedyTrips App
+# 🚗 SpeedyTrips
 
 SpeedyTrips is a black & gold themed rideshare mobile application built with Flutter.
 
-The goal is to create a streamlined airport-focused ride experience with zone-based pricing, scheduled rides, and real-time driver/rider connection.
+The app is designed to provide a streamlined airport transportation experience using:
+- Zone-based flat pricing
+- Scheduled and on-demand rides
+- Real-time rider ↔ driver connection
+
+Initial launch focus: **Birmingham Airport (BHM)**
 
 ---
 
-## Tech Stack
+## 🧱 Tech Stack
 
-- Flutter (UI + App Logic)
-- Dart (Programming Language)
-- Visual Studio Code (Development Environment)
-- GitHub (Version Control)
-- Base44 (Backend Integration - in progress)
+### Frontend (Mobile App)
+- Flutter
+- Dart
+
+### Development Tools
+- Visual Studio Code
+- Android Studio (Emulator & SDK)
+- Git + GitHub
+
+### Backend (Planned)
+- Firebase (Firestore + Authentication + Real-time updates)
+
+### Prototype Source
+- Base44 (used only for early UI/logic reference — NOT part of production backend)
 
 ---
 
-## Platforms
+## 📱 Platforms
 
 - iOS (in progress)
 - Android (in progress)
-- Web (used for testing/debugging)
+- Web (for testing/debugging only)
 
 ---
 
-## Design Theme
+## 🎨 Design System
 
-- Primary: Black
-- Accent: Gold
-- Style: Clean, minimal, luxury ride experience
+- Primary Color: Black
+- Accent Color: Gold
+- UX Style: Clean, minimal, premium ride experience
 
 ---
 
-## Current Progress (MVP)
+## ✅ Current Progress (MVP)
 
-### Rider Side (COMPLETE)
-- Pickup selection (BHM Airport)
-- Zone selection dropdown
-- Ride type (Ride Now / Schedule)
-- Date & Time picker for scheduled rides
-- Live Trip Summary UI
-- Navigation to Driver screen
-- "My Rides" screen created
-- Basic ride history UI structure
+### Rider Side (Completed)
+- Pickup location fixed to BHM Airport
+- Zone selection system
+- Dynamic pricing by zone
+- Ride type selection:
+  - Ride Now
+  - Scheduled Ride
+- Date & time picker for scheduled rides
+- Live trip summary
+- Ride confirmation flow
+- "My Rides" (ride history UI)
+- Navigation between screens
 
-### Driver Side (COMPLETE UI)
+---
+
+### Driver Side (Completed UI)
 - Online / Offline toggle
 - Incoming ride request UI
 - Ride details display:
@@ -70,48 +89,57 @@ The goal is to create a streamlined airport-focused ride experience with zone-ba
   - Zone
   - Ride type
   - Price
-- Accept / Decline ride buttons
+- Accept / Decline functionality
 
 ---
 
-## In Progress
+## 🔄 In Progress
 
 - Connecting Rider → Driver data flow
-- Passing real booking data between screens
-- Cleaning navigation structure
-- UI polish (black & gold consistency)
+- Passing real ride data between screens
+- Navigation cleanup and structure
+- UI polish (consistent black & gold styling)
 
 ---
 
-## TODO (Next Development Phase)
+## 🚧 Next Development Phase
 
-### Core Functionality
-- [ ] Connect rider booking to driver screen (real data)
-- [ ] Add ride status system:
+### Core System
+- [ ] Connect rider booking to driver screen (real data model)
+- [ ] Implement full ride status lifecycle:
   - Searching
   - Accepted
   - Arrived
   - In Progress
   - Completed
 
+---
+
 ### Driver Flow
-- [ ] Add "Arrived" button
-- [ ] Add "Start Trip" button
-- [ ] Add "Complete Trip" button
-
-### Rider Flow
-- [ ] Show driver assigned screen
-- [ ] Show live trip tracking UI
-
-### Backend (Base44 Integration)
-- [ ] Create booking entity
-- [ ] Store ride data
-- [ ] Fetch ride history dynamically
-- [ ] Sync driver + rider state
+- [ ] Add "Arrived at Pickup"
+- [ ] Add "Start Trip"
+- [ ] Add "Complete Trip"
 
 ---
 
-## Project Structure
+### Rider Flow
+- [ ] Driver assigned screen
+- [ ] Live ride tracking UI
+- [ ] Real-time ride updates
+
+---
+
+### Backend (Firebase Integration)
+- [ ] Create booking collection (Firestore)
+- [ ] Store ride data
+- [ ] Fetch ride history dynamically
+- [ ] Sync rider ↔ driver state
+- [ ] Implement real-time updates
+- [ ] Add authentication (rider / driver roles)
+
+---
+
+## 📂 Project Structure
 
 lib/
 │
@@ -125,67 +153,83 @@ lib/
 │ ├── driver/
 │ │ ├── driver_home.dart
 │
-├── widgets/ (planned)
-├── services/ (planned for backend)
+├── widgets/ (planned reusable UI components)
+├── services/ (Firebase + backend logic)
+├── state/ (shared app state)
 
 
 ---
 
-## How to Run the Project
+## ▶️ Running the Project
 
-1. Install Flutter:
-https://docs.flutter.dev/get-started/install
-
-2. Clone the repository:
-https://github.com/YOUR_USERNAME/speedy_trips.git
+### 1. Clone repository
+git clone https://github.com/christea-oss/speedy_trips.git
 
 
-3. Navigate into project:
-cd speedy_trips
+### 2. Open in VS Code
 
-
-4. Get dependencies:
+### 3. Install dependencies
 flutter pub get
 
 
-5. Run the app:
+### 4. Run app
 flutter run
 
 
 ---
 
-## Contributing (Team Instructions)
+## 🤝 Team Workflow
 
-- Pull latest changes before starting work
-- Create a new branch for features:
+### Branching
+Never work directly on `main`
+
+Create a branch:
 git checkout -b feature/your-feature-name
 
-
-- Commit clearly:
-git commit -m "Added driver trip status buttons"
-
-
-- Push your branch:
+Push your branch:
 git push origin feature/your-feature-name
 
 
 ---
 
-## Vision
+### Contribution Areas
 
-SpeedyTrips will evolve into a full rideshare platform focused on:
+#### Frontend (Flutter)
+- Rider UI improvements
+- Driver UI improvements
+- Navigation + UX
+
+#### Backend (Firebase)
+- Firestore structure
+- Real-time updates
+- Ride synchronization
+
+#### UI/UX
+- Black & gold styling
+- Layout polish
+- User flow improvements
+
+#### Testing
+- Rider flow testing
+- Driver flow testing
+- Edge case validation
+
+---
+
+## 🎯 Vision
+
+SpeedyTrips is being built into a scalable rideshare platform focused on:
 
 - Airport transportation
 - Scheduled rides
 - Zone-based pricing
-- Clean and reliable UX
-- Fast driver matching
+- Fast and reliable UX
+- Real-time driver matching
 
 ---
 
-## Status
+## ⚡ Status
 
-Actively in development  
-MVP UI completed  
-Backend + real-time features coming next
-
+🚧 Active Development  
+🔥 MVP UI Completed  
+🚀 Backend + Real-Time System Next Phase
