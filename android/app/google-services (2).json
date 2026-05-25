@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "677273835452",
+    "project_id": "speedytrips-5b584",
+    "storage_bucket": "speedytrips-5b584.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:677273835452:android:7cf76bd04d4b98e0acfdb9",
+        "android_client_info": {
+          "package_name": "com.example.speedy_trips"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB2a9bW-SBgXklKRy_7K2HAbrWXfSalk4k"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
