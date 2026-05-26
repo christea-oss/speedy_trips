@@ -351,76 +351,109 @@ class _RiderHomeState extends State<RiderHome> {
 
     final rideType = isScheduled ? 'Scheduled Ride' : 'Ride Now';
     final price = '\$$currentFare';
+    var isBooking = false;
 
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Confirm Your Ride'),
-        content: Text(
-          isScheduled
-              ? 'Pickup: $currentPickupLocation\n'
-                  'Dropoff: ${customDropoff ?? selectedServiceAreaName}\n'
-                  'Service Area: $selectedServiceAreaName\n'
-                  'Vehicle: ${vehicleType == "black_ride" ? "Black Ride" : "Black SUV"}\n'
-                  'Type: $rideType\n'
-                  'Date: ${selectedDate!.month}/${selectedDate!.day}/${selectedDate!.year}\n'
-                  'Time: ${selectedTime!.format(context)}\n'
-                  'Price: $price'
-              : 'Pickup: $currentPickupLocation\n'
-                  'Dropoff: ${customDropoff ?? selectedServiceAreaName}\n'
-                  'Service Area: $selectedServiceAreaName\n'
-                  'Vehicle: ${vehicleType == "black_ride" ? "Black Ride" : "Black SUV"}\n'
-                  'Type: $rideType\n'
-                  'Price: $price',
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (dialogContext, setDialogState) => AlertDialog(
+          title: const Text('Confirm Your Ride'),
+          content: Text(
+            isScheduled
+                ? 'Pickup: $currentPickupLocation\n'
+                    'Dropoff: ${customDropoff ?? selectedServiceAreaName}\n'
+                    'Service Area: $selectedServiceAreaName\n'
+                    'Vehicle: ${vehicleType == "black_ride" ? "Black Ride" : "Black SUV"}\n'
+                    'Type: $rideType\n'
+                    'Date: ${selectedDate!.month}/${selectedDate!.day}/${selectedDate!.year}\n'
+                    'Time: ${selectedTime!.format(dialogContext)}\n'
+                    'Price: $price'
+                : 'Pickup: $currentPickupLocation\n'
+                    'Dropoff: ${customDropoff ?? selectedServiceAreaName}\n'
+                    'Service Area: $selectedServiceAreaName\n'
+                    'Vehicle: ${vehicleType == "black_ride" ? "Black Ride" : "Black SUV"}\n'
+                    'Type: $rideType\n'
+                    'Price: $price',
+          ),
+          actions: [
+            TextButton(
+              onPressed: isBooking ? null : () => Navigator.pop(dialogContext),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: isBooking
+                  ? null
+                  : () async {
+                      setDialogState(() {
+                        isBooking = true;
+                      });
+
+                      try {
+                        final ride = await RideRepository.instance.createRide(
+                          pickupLocation: currentPickupLocation,
+                          dropoffLocation:
+                              customDropoff ?? selectedServiceAreaName,
+                          zone: selectedZone!,
+                          vehicleType: vehicleType == 'black_ride'
+                              ? VehicleType.blackRide
+                              : VehicleType.blackSuv,
+                          rideType: rideType,
+                          fare: currentFare,
+                          scheduledDate: selectedDate,
+                          scheduledTime: selectedTime,
+                          requireFirestore: true,
+                        );
+
+                        if (!dialogContext.mounted) return;
+
+                        Navigator.pop(dialogContext);
+
+                        if (!mounted) return;
+
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => RideSuccessScreen(ride: ride),
+                          ),
+                        );
+
+                        setState(() {
+                          selectedZone = null;
+                          customPickup = null;
+                          customDropoff = null;
+                          pickupController.text = defaultPickupLocation;
+                          dropoffController.clear();
+                          vehicleType = 'black_suv';
+                          scheduleType = 'now';
+                          selectedDate = null;
+                          selectedTime = null;
+                        });
+                      } catch (error) {
+                        if (!dialogContext.mounted) return;
+
+                        Navigator.pop(dialogContext);
+
+                        if (!mounted) return;
+
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              'Ride was not booked. ${error.toString()}',
+                            ),
+                          ),
+                        );
+                      }
+                    },
+              child: isBooking
+                  ? const SizedBox(
+                      height: 18,
+                      width: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Text('Confirm'),
+            ),
+          ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              final ride = await RideRepository.instance.createRide(
-                pickupLocation: currentPickupLocation,
-                dropoffLocation: customDropoff ?? selectedServiceAreaName,
-                zone: selectedZone!,
-                vehicleType: vehicleType == 'black_ride'
-                    ? VehicleType.blackRide
-                    : VehicleType.blackSuv,
-                rideType: rideType,
-                fare: currentFare,
-                scheduledDate: selectedDate,
-                scheduledTime: selectedTime,
-              );
-
-              if (!context.mounted) return;
-
-              Navigator.pop(context);
-
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => RideSuccessScreen(ride: ride),
-                ),
-              );
-
-              if (!mounted) return;
-
-              setState(() {
-                selectedZone = null;
-                customPickup = null;
-                customDropoff = null;
-                pickupController.text = defaultPickupLocation;
-                dropoffController.clear();
-                vehicleType = 'black_suv';
-                scheduleType = 'now';
-                selectedDate = null;
-                selectedTime = null;
-              });
-            },
-            child: const Text('Confirm'),
-          ),
-        ],
       ),
     );
   }

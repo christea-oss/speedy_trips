@@ -182,6 +182,7 @@ class RideRepository {
     required int fare,
     DateTime? scheduledDate,
     TimeOfDay? scheduledTime,
+    bool requireFirestore = false,
   }) async {
     if (FirebaseBootstrap.isEnabled) {
       try {
@@ -198,12 +199,20 @@ class RideRepository {
         _upsertLocalRide(ride);
         return ride;
       } catch (error) {
+        if (requireFirestore) {
+          rethrow;
+        }
+
         if (!kIsWeb) {
           rethrow;
         }
 
         FirebaseBootstrap.disable(error);
       }
+    }
+
+    if (requireFirestore) {
+      throw StateError('Firebase is not available. Ride was not booked.');
     }
 
     return _createLocalRide(

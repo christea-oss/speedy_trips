@@ -71,6 +71,12 @@ class FirestoreRideRepository {
     DateTime? scheduledDate,
     TimeOfDay? scheduledTime,
   }) async {
+    final riderId = AuthService.instance.currentUser?.uid;
+
+    if (riderId == null) {
+      throw StateError('A signed-in rider is required to book a ride.');
+    }
+
     final document = _rides.doc();
     final ride = Ride(
       id: document.id,
@@ -85,8 +91,21 @@ class FirestoreRideRepository {
       scheduledDate: scheduledDate,
       scheduledTime: scheduledTime,
     );
+    final rideData = _rideToFirestore(
+      ride,
+      riderId: riderId,
+    );
 
-    await document.set(_rideToFirestore(ride));
+    debugPrint(
+      'FirestoreRideRepository.createRide writing ride data: $rideData',
+    );
+
+    await document.set(rideData);
+
+    debugPrint(
+      'FirestoreRideRepository.createRide wrote ride document ID: ${document.id}',
+    );
+
     return ride;
   }
 
@@ -140,7 +159,10 @@ class FirestoreRideRepository {
     );
   }
 
-  Map<String, dynamic> _rideToFirestore(Ride ride) {
+  Map<String, dynamic> _rideToFirestore(
+    Ride ride, {
+    required String riderId,
+  }) {
     return {
       'pickupLocation': ride.pickupLocation,
       'dropoffLocation': ride.dropoffLocation,
@@ -159,7 +181,8 @@ class FirestoreRideRepository {
               'hour': ride.scheduledTime!.hour,
               'minute': ride.scheduledTime!.minute,
             },
-      'riderUid': AuthService.instance.currentUser?.uid,
+      'riderId': riderId,
+      'riderUid': riderId,
       'updatedAt': FieldValue.serverTimestamp(),
     };
   }
