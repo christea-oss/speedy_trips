@@ -15,6 +15,10 @@ class MyRides extends StatefulWidget {
 class _MyRidesState extends State<MyRides> {
   final Set<String> _ratingRideIds = <String>{};
 
+  void returnToBooking() {
+    Navigator.of(context).pop();
+  }
+
   void handleRebook(Ride ride) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -232,78 +236,106 @@ class _MyRidesState extends State<MyRides> {
       backgroundColor: Colors.black,
       appBar: AppBar(
         backgroundColor: Colors.black,
+        leading: IconButton(
+          tooltip: 'Back to booking',
+          onPressed: returnToBooking,
+          icon: const Icon(Icons.arrow_back, color: Colors.amber),
+        ),
         title: const Text('Ride History'),
       ),
       body: SafeArea(
         child: SingleChildScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
           padding: const EdgeInsets.all(20),
-          child: StreamBuilder<List<Ride>>(
-            stream: RideRepository.instance.watchRiderRides(),
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting &&
-                  !snapshot.hasData) {
-                return SizedBox(
-                  height: MediaQuery.sizeOf(context).height * 0.6,
-                  child: const Center(
-                    child: CircularProgressIndicator(
-                      color: Colors.amber,
-                    ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              OutlinedButton.icon(
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: Colors.amber,
+                  side: const BorderSide(color: Colors.amber),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 12,
                   ),
-                );
-              }
-
-              final rides = snapshot.data ?? const <Ride>[];
-
-              if (rides.isEmpty) {
-                return SizedBox(
-                  height: MediaQuery.sizeOf(context).height * 0.6,
-                  child: const Center(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.directions_car,
-                          size: 60,
-                          color: Colors.white54,
+                ),
+                onPressed: returnToBooking,
+                icon: const Icon(Icons.arrow_back),
+                label: const Text(
+                  'Back to Booking',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+              ),
+              const SizedBox(height: 16),
+              StreamBuilder<List<Ride>>(
+                stream: RideRepository.instance.watchRiderRides(),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting &&
+                      !snapshot.hasData) {
+                    return SizedBox(
+                      height: MediaQuery.sizeOf(context).height * 0.6,
+                      child: const Center(
+                        child: CircularProgressIndicator(
+                          color: Colors.amber,
                         ),
-                        SizedBox(height: 16),
-                        Text(
-                          'No rides yet.\nYour trips will appear here.',
-                          textAlign: TextAlign.center,
+                      ),
+                    );
+                  }
+
+                  final rides = snapshot.data ?? const <Ride>[];
+
+                  if (rides.isEmpty) {
+                    return SizedBox(
+                      height: MediaQuery.sizeOf(context).height * 0.6,
+                      child: const Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.directions_car,
+                              size: 60,
+                              color: Colors.white54,
+                            ),
+                            SizedBox(height: 16),
+                            Text(
+                              'No rides yet.\nYour trips will appear here.',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                color: Colors.white70,
+                                fontSize: 16,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  }
+
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Padding(
+                        padding: EdgeInsets.only(bottom: 16),
+                        child: Text(
+                          'Your rides',
                           style: TextStyle(
                             color: Colors.white70,
-                            fontSize: 16,
+                            fontSize: 14,
                           ),
                         ),
-                      ],
-                    ),
-                  ),
-                );
-              }
-
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Padding(
-                    padding: EdgeInsets.only(bottom: 16),
-                    child: Text(
-                      'Your rides',
-                      style: TextStyle(
-                        color: Colors.white70,
-                        fontSize: 14,
                       ),
-                    ),
-                  ),
-                  ListView.builder(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    itemCount: rides.length,
-                    itemBuilder: (context, index) => buildRideCard(rides[index]),
-                  ),
-                ],
-              );
-            },
+                      ListView.builder(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        itemCount: rides.length,
+                        itemBuilder: (context, index) =>
+                            buildRideCard(rides[index]),
+                      ),
+                    ],
+                  );
+                },
+              ),
+            ],
           ),
         ),
       ),
