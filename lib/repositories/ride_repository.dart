@@ -323,6 +323,49 @@ class RideRepository {
     );
   }
 
+  Future<Ride> rateRide({
+    required String rideId,
+    required int rating,
+  }) async {
+    if (rating < 1 || rating > 5) {
+      throw ArgumentError.value(rating, 'rating', 'Rating must be 1-5.');
+    }
+
+    if (FirebaseBootstrap.isEnabled) {
+      try {
+        final ride = await _firestore.rateRide(
+          rideId: rideId,
+          rating: rating,
+        );
+        _upsertLocalRide(ride);
+        _notifyLocalRides();
+        return ride;
+      } catch (error) {
+        if (!kIsWeb) {
+          rethrow;
+        }
+
+        FirebaseBootstrap.disable(error);
+      }
+    }
+
+    final index = _rides.indexWhere((ride) => ride.id == rideId);
+
+    if (index == -1) {
+      throw ArgumentError.value(rideId, 'rideId', 'Ride not found');
+    }
+
+    final ride = _rides[index];
+    if (ride.status != RideStatus.completed) {
+      throw StateError('Only completed rides can be rated.');
+    }
+
+    final updatedRide = ride.copyWith(riderRating: rating);
+    _rides[index] = updatedRide;
+    _notifyLocalRides();
+    return updatedRide;
+  }
+
   Future<Ride> updateStatus(Ride ride, RideStatus status) async {
     try {
       return await updateRideStatus(

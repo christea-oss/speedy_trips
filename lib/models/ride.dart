@@ -15,6 +15,7 @@ class Ride {
   final DateTime createdAt;
   final String? riderId;
   final String? assignedDriver;
+  final int? riderRating;
   final DateTime? scheduledDate;
   final TimeOfDay? scheduledTime;
 
@@ -30,6 +31,7 @@ class Ride {
     required this.createdAt,
     this.riderId,
     this.assignedDriver,
+    this.riderRating,
     this.scheduledDate,
     this.scheduledTime,
   });
@@ -48,6 +50,7 @@ class Ride {
     DateTime? createdAt,
     String? riderId,
     String? assignedDriver,
+    int? riderRating,
     DateTime? scheduledDate,
     TimeOfDay? scheduledTime,
   }) {
@@ -63,6 +66,7 @@ class Ride {
       createdAt: createdAt ?? this.createdAt,
       riderId: riderId ?? this.riderId,
       assignedDriver: assignedDriver ?? this.assignedDriver,
+      riderRating: riderRating ?? this.riderRating,
       scheduledDate: scheduledDate ?? this.scheduledDate,
       scheduledTime: scheduledTime ?? this.scheduledTime,
     );

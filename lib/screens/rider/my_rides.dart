@@ -13,6 +13,8 @@ class MyRides extends StatefulWidget {
 }
 
 class _MyRidesState extends State<MyRides> {
+  final Set<String> _ratingRideIds = <String>{};
+
   void handleRebook(Ride ride) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -23,6 +25,54 @@ class _MyRidesState extends State<MyRides> {
     );
 
     // Later, this can navigate directly into RiderHome with data pre-filled.
+  }
+
+  Future<void> handleRating(Ride ride, int rating) async {
+    if (ride.status != RideStatus.completed) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Only completed rides can be rated.'),
+        ),
+      );
+      return;
+    }
+
+    setState(() {
+      _ratingRideIds.add(ride.id);
+    });
+
+    try {
+      await RideRepository.instance.rateRide(
+        rideId: ride.id,
+        rating: rating,
+      );
+
+      if (!mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Saved $rating-star driver rating.'),
+        ),
+      );
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Rating was not saved: $error'),
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _ratingRideIds.remove(ride.id);
+        });
+      }
+    }
   }
 
   String formatDate(DateTime date) {
@@ -44,6 +94,138 @@ class _MyRidesState extends State<MyRides> {
     }
   }
 
+  Widget buildRatingStars(Ride ride) {
+    if (ride.status != RideStatus.completed) {
+      return const SizedBox.shrink();
+    }
+
+    final isSaving = _ratingRideIds.contains(ride.id);
+    final selectedRating = ride.riderRating ?? 0;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: 12),
+        const Text(
+          'Rate driver',
+          style: TextStyle(
+            color: Colors.white70,
+            fontSize: 13,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(height: 6),
+        Row(
+          children: List.generate(5, (index) {
+            final rating = index + 1;
+            final isSelected = rating <= selectedRating;
+
+            return IconButton(
+              tooltip: '$rating star rating',
+              constraints: const BoxConstraints(
+                minWidth: 40,
+                minHeight: 40,
+              ),
+              padding: EdgeInsets.zero,
+              onPressed: isSaving ? null : () => handleRating(ride, rating),
+              icon: Icon(
+                isSelected ? Icons.star : Icons.star_border,
+                color: isSelected ? Colors.amber : Colors.white54,
+                size: 30,
+              ),
+            );
+          }),
+        ),
+        if (isSaving)
+          const Padding(
+            padding: EdgeInsets.only(top: 4),
+            child: Text(
+              'Saving rating...',
+              style: TextStyle(
+                color: Colors.white54,
+                fontSize: 12,
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget buildRideCard(Ride ride) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white10,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: Colors.white24,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            ride.dropoffLocation,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Pickup: ${ride.pickupLocation}',
+            style: const TextStyle(
+              color: Colors.white70,
+            ),
+          ),
+          Text(
+            'Vehicle: ${ride.vehicleType.label}',
+            style: const TextStyle(
+              color: Colors.white70,
+            ),
+          ),
+          Text(
+            'Fare: ${ride.priceLabel}',
+            style: const TextStyle(
+              color: Colors.amber,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          Text(
+            'Date: ${formatDate(ride.createdAt)}',
+            style: const TextStyle(
+              color: Colors.white70,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                ride.status.label.toUpperCase(),
+                style: TextStyle(
+                  color: statusColor(ride.status),
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.amber,
+                  foregroundColor: Colors.black,
+                ),
+                onPressed: () => handleRebook(ride),
+                child: const Text('Rebook'),
+              ),
+            ],
+          ),
+          buildRatingStars(ride),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -52,140 +234,77 @@ class _MyRidesState extends State<MyRides> {
         backgroundColor: Colors.black,
         title: const Text('Ride History'),
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(20),
-        child: StreamBuilder<List<Ride>>(
-          stream: RideRepository.instance.watchRiderRides(),
-          builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting &&
-                !snapshot.hasData) {
-              return const Center(
-                child: CircularProgressIndicator(
-                  color: Colors.amber,
-                ),
-              );
-            }
-
-            final rides = snapshot.data ?? const <Ride>[];
-
-            if (rides.isEmpty) {
-              return const Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      Icons.directions_car,
-                      size: 60,
-                      color: Colors.white54,
+      body: SafeArea(
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.all(20),
+          child: StreamBuilder<List<Ride>>(
+            stream: RideRepository.instance.watchRiderRides(),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting &&
+                  !snapshot.hasData) {
+                return SizedBox(
+                  height: MediaQuery.sizeOf(context).height * 0.6,
+                  child: const Center(
+                    child: CircularProgressIndicator(
+                      color: Colors.amber,
                     ),
-                    SizedBox(height: 16),
-                    Text(
-                      'No rides yet.\nYour trips will appear here.',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: Colors.white70,
-                        fontSize: 16,
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            }
-
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Your rides',
-                  style: TextStyle(
-                    color: Colors.white70,
-                    fontSize: 14,
                   ),
-                ),
-                const SizedBox(height: 16),
-                Expanded(
-                  child: ListView.builder(
-                    itemCount: rides.length,
-                    itemBuilder: (context, index) {
-                      final ride = rides[index];
+                );
+              }
 
-                      return Container(
-                        margin: const EdgeInsets.only(bottom: 12),
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: Colors.white10,
-                          borderRadius: BorderRadius.circular(14),
-                          border: Border.all(
-                            color: Colors.white24,
+              final rides = snapshot.data ?? const <Ride>[];
+
+              if (rides.isEmpty) {
+                return SizedBox(
+                  height: MediaQuery.sizeOf(context).height * 0.6,
+                  child: const Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.directions_car,
+                          size: 60,
+                          color: Colors.white54,
+                        ),
+                        SizedBox(height: 16),
+                        Text(
+                          'No rides yet.\nYour trips will appear here.',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: Colors.white70,
+                            fontSize: 16,
                           ),
                         ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              ride.dropoffLocation,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              'Pickup: ${ride.pickupLocation}',
-                              style: const TextStyle(
-                                color: Colors.white70,
-                              ),
-                            ),
-                            Text(
-                              'Vehicle: ${ride.vehicleType.label}',
-                              style: const TextStyle(
-                                color: Colors.white70,
-                              ),
-                            ),
-                            Text(
-                              'Fare: ${ride.priceLabel}',
-                              style: const TextStyle(
-                                color: Colors.amber,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            Text(
-                              'Date: ${formatDate(ride.createdAt)}',
-                              style: const TextStyle(
-                                color: Colors.white70,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Text(
-                                  ride.status.label.toUpperCase(),
-                                  style: TextStyle(
-                                    color: statusColor(ride.status),
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                ElevatedButton(
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: Colors.amber,
-                                    foregroundColor: Colors.black,
-                                  ),
-                                  onPressed: () => handleRebook(ride),
-                                  child: const Text('Rebook'),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      );
-                    },
+                      ],
+                    ),
                   ),
-                ),
-              ],
-            );
-          },
+                );
+              }
+
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Padding(
+                    padding: EdgeInsets.only(bottom: 16),
+                    child: Text(
+                      'Your rides',
+                      style: TextStyle(
+                        color: Colors.white70,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ),
+                  ListView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: rides.length,
+                    itemBuilder: (context, index) => buildRideCard(rides[index]),
+                  ),
+                ],
+              );
+            },
+          ),
         ),
       ),
     );

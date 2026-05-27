@@ -201,6 +201,53 @@ class FirestoreRideRepository {
     );
   }
 
+  Future<Ride> rateRide({
+    required String rideId,
+    required int rating,
+  }) async {
+    if (rating < 1 || rating > 5) {
+      throw ArgumentError.value(rating, 'rating', 'Rating must be 1-5.');
+    }
+
+    final riderId = AuthService.instance.currentUser?.uid;
+    if (riderId == null) {
+      throw StateError('A signed-in rider is required to rate a ride.');
+    }
+
+    final document = _rides.doc(rideId);
+
+    await _firestore.runTransaction((transaction) async {
+      final snapshot = await transaction.get(document);
+      if (!snapshot.exists) {
+        throw StateError('Ride was not found.');
+      }
+
+      final data = snapshot.data() ?? <String, dynamic>{};
+      final status = rideStatusFromId(
+        data['status'] as String? ?? RideStatus.pending.id,
+      );
+      final rideRiderId = _stringFromFirestore(data['riderId']) ??
+          _stringFromFirestore(data['riderUid']);
+
+      if (status != RideStatus.completed) {
+        throw StateError('Only completed rides can be rated.');
+      }
+
+      if (rideRiderId != null && rideRiderId != riderId) {
+        throw StateError('Only the rider who booked this trip can rate it.');
+      }
+
+      transaction.update(document, {
+        'riderRating': rating,
+        'riderRatedAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+    });
+
+    final snapshot = await document.get();
+    return _rideFromSnapshot(snapshot);
+  }
+
   Ride _rideFromSnapshot(DocumentSnapshot<Map<String, dynamic>> snapshot) {
     final data = snapshot.data() ?? <String, dynamic>{};
     final scheduledTime = data['scheduledTime'];
@@ -223,6 +270,7 @@ class FirestoreRideRepository {
           _stringFromFirestore(data['riderUid']),
       assignedDriver: _stringFromFirestore(data['assignedDriver']) ??
           _stringFromFirestore(data['driverId']),
+      riderRating: (data['riderRating'] as num?)?.toInt(),
       scheduledDate: _dateTimeFromFirestore(data['scheduledDate']),
       scheduledTime: scheduledTime is Map<String, dynamic>
           ? TimeOfDay(

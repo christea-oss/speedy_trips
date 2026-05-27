@@ -74,9 +74,11 @@ class RideSuccessScreen extends StatelessWidget {
                           context,
                           MaterialPageRoute(
                             builder: (context) => TripComplete(
+                              rideId: currentRide.id,
                               zone: currentRide.zone,
                               vehicleType: currentRide.vehicleType.id,
                               price: currentRide.priceLabel,
+                              riderRating: currentRide.riderRating,
                             ),
                           ),
                         );
