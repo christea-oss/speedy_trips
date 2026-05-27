@@ -24,9 +24,41 @@ class FirestoreRideRepository {
         .map((snapshot) => snapshot.docs.map(_rideFromSnapshot).toList());
   }
 
-  Stream<List<Ride>> watchRequestedRides() {
+  Stream<List<Ride>> watchRiderRides() {
+    final riderId = AuthService.instance.currentUser?.uid;
+
+    if (riderId == null) {
+      return Stream.value(const <Ride>[]);
+    }
+
     return _rides
-        .where('status', isEqualTo: RideStatus.requested.id)
+        .where('riderId', isEqualTo: riderId)
+        .snapshots()
+        .map((snapshot) => snapshot.docs.map(_rideFromSnapshot).toList()
+          ..sort((a, b) => b.createdAt.compareTo(a.createdAt)));
+  }
+
+  Stream<List<Ride>> watchRequestedRides() {
+    return watchPendingRides();
+  }
+
+  Stream<List<Ride>> watchPendingRides() {
+    return _rides
+        .where('status', isEqualTo: RideStatus.pending.id)
+        .snapshots()
+        .map((snapshot) => snapshot.docs.map(_rideFromSnapshot).toList()
+          ..sort((a, b) => b.createdAt.compareTo(a.createdAt)));
+  }
+
+  Stream<List<Ride>> watchAssignedDriverRides() {
+    final driverId = AuthService.instance.currentUser?.uid;
+
+    if (driverId == null) {
+      return Stream.value(const <Ride>[]);
+    }
+
+    return _rides
+        .where('assignedDriver', isEqualTo: driverId)
         .snapshots()
         .map((snapshot) => snapshot.docs.map(_rideFromSnapshot).toList()
           ..sort((a, b) => b.createdAt.compareTo(a.createdAt)));
@@ -49,7 +81,7 @@ class FirestoreRideRepository {
 
   Future<Ride?> getLatestDriverRequest() async {
     final snapshot = await _rides
-        .where('status', isEqualTo: RideStatus.requested.id)
+        .where('status', isEqualTo: RideStatus.pending.id)
         .get();
 
     if (snapshot.docs.isEmpty) {
@@ -86,8 +118,9 @@ class FirestoreRideRepository {
       vehicleType: vehicleType,
       rideType: rideType,
       fare: fare,
-      status: RideStatus.requested,
+      status: RideStatus.pending,
       createdAt: DateTime.now(),
+      riderId: riderId,
       scheduledDate: scheduledDate,
       scheduledTime: scheduledTime,
     );
@@ -124,10 +157,47 @@ class FirestoreRideRepository {
     return _rideFromSnapshot(snapshot);
   }
 
+  Future<Ride> acceptRide(String rideId) async {
+    final driverId = AuthService.instance.currentUser?.uid;
+
+    if (driverId == null) {
+      throw StateError('A signed-in driver is required to accept a ride.');
+    }
+
+    final document = _rides.doc(rideId);
+
+    await _firestore.runTransaction((transaction) async {
+      final snapshot = await transaction.get(document);
+      if (!snapshot.exists) {
+        throw StateError('Ride is no longer available.');
+      }
+
+      final data = snapshot.data() ?? <String, dynamic>{};
+      final status = rideStatusFromId(
+        data['status'] as String? ?? RideStatus.pending.id,
+      );
+      final assignedDriver = data['assignedDriver'] as String?;
+
+      if (status != RideStatus.pending || assignedDriver != null) {
+        throw StateError('Ride was already accepted.');
+      }
+
+      transaction.update(document, {
+        'assignedDriver': driverId,
+        'driverId': driverId,
+        'status': RideStatus.accepted.id,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+    });
+
+    final snapshot = await document.get();
+    return _rideFromSnapshot(snapshot);
+  }
+
   Future<Ride> cancelRide(String rideId) {
     return updateRideStatus(
       rideId: rideId,
-      status: RideStatus.declined,
+      status: RideStatus.cancelled,
     );
   }
 
@@ -146,9 +216,13 @@ class FirestoreRideRepository {
       rideType: data['rideType'] as String? ?? 'Ride Now',
       fare: (data['fare'] as num?)?.toInt() ?? 0,
       status: rideStatusFromId(
-        data['status'] as String? ?? RideStatus.requested.id,
+        data['status'] as String? ?? RideStatus.pending.id,
       ),
       createdAt: _dateTimeFromFirestore(data['createdAt']) ?? DateTime.now(),
+      riderId: _stringFromFirestore(data['riderId']) ??
+          _stringFromFirestore(data['riderUid']),
+      assignedDriver: _stringFromFirestore(data['assignedDriver']) ??
+          _stringFromFirestore(data['driverId']),
       scheduledDate: _dateTimeFromFirestore(data['scheduledDate']),
       scheduledTime: scheduledTime is Map<String, dynamic>
           ? TimeOfDay(
@@ -171,6 +245,8 @@ class FirestoreRideRepository {
       'rideType': ride.rideType,
       'fare': ride.fare,
       'status': ride.status.id,
+      'assignedDriver': ride.assignedDriver,
+      'driverId': ride.assignedDriver,
       'createdAt': Timestamp.fromDate(ride.createdAt),
       'scheduledDate': ride.scheduledDate == null
           ? null
@@ -197,5 +273,9 @@ class FirestoreRideRepository {
     }
 
     return null;
+  }
+
+  String? _stringFromFirestore(Object? value) {
+    return value is String && value.isNotEmpty ? value : null;
   }
 }

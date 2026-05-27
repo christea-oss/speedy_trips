@@ -22,41 +22,7 @@ class RideRepository {
     return _firestoreRepository ??= FirestoreRideRepository();
   }
 
-  final List<Ride> _rides = [
-    Ride(
-      id: 'demo-driver-request',
-      pickupLocation: 'BHM Airport',
-      dropoffLocation: 'Zone 1 - Central Birmingham',
-      zone: 'Zone 1 - Central Birmingham',
-      vehicleType: VehicleType.blackSuv,
-      rideType: 'Ride Now',
-      fare: 25,
-      status: RideStatus.requested,
-      createdAt: DateTime.now(),
-    ),
-    Ride(
-      id: 'history-1',
-      pickupLocation: 'Birmingham Airport (BHM)',
-      dropoffLocation: 'Zone 2 - South Metro',
-      zone: 'Zone 2 - South Metro',
-      vehicleType: VehicleType.blackSuv,
-      rideType: 'Ride Now',
-      fare: 45,
-      status: RideStatus.completed,
-      createdAt: DateTime.now().subtract(const Duration(days: 1)),
-    ),
-    Ride(
-      id: 'history-2',
-      pickupLocation: 'Birmingham Airport (BHM)',
-      dropoffLocation: 'Zone 7 - Tuscaloosa Route',
-      zone: 'Zone 7 - Tuscaloosa Route',
-      vehicleType: VehicleType.blackRide,
-      rideType: 'Scheduled Ride',
-      fare: 100,
-      status: RideStatus.completed,
-      createdAt: DateTime.now().subtract(const Duration(days: 3)),
-    ),
-  ];
+  final List<Ride> _rides = <Ride>[];
 
   Stream<List<Ride>> watchRides() async* {
     if (FirebaseBootstrap.isEnabled) {
@@ -80,10 +46,36 @@ class RideRepository {
     }
   }
 
-  Stream<List<Ride>> watchRequestedRides() async* {
+  Stream<List<Ride>> watchRiderRides() async* {
     if (FirebaseBootstrap.isEnabled) {
       try {
-        await for (final rides in _firestore.watchRequestedRides()) {
+        await for (final rides in _firestore.watchRiderRides()) {
+          yield rides;
+        }
+        return;
+      } catch (error) {
+        if (!kIsWeb) {
+          rethrow;
+        }
+
+        FirebaseBootstrap.disable(error);
+      }
+    }
+
+    yield getLocalRides();
+    await for (final _ in _localRideChanges.stream) {
+      yield getLocalRides();
+    }
+  }
+
+  Stream<List<Ride>> watchRequestedRides() async* {
+    yield* watchPendingRides();
+  }
+
+  Stream<List<Ride>> watchPendingRides() async* {
+    if (FirebaseBootstrap.isEnabled) {
+      try {
+        await for (final rides in _firestore.watchPendingRides()) {
           yield rides;
         }
         return;
@@ -99,6 +91,40 @@ class RideRepository {
     yield _requestedLocalRides();
     await for (final _ in _localRideChanges.stream) {
       yield _requestedLocalRides();
+    }
+  }
+
+  Stream<List<Ride>> watchAssignedDriverRides() async* {
+    if (FirebaseBootstrap.isEnabled) {
+      try {
+        await for (final rides in _firestore.watchAssignedDriverRides()) {
+          yield rides;
+        }
+        return;
+      } catch (error) {
+        if (!kIsWeb) {
+          rethrow;
+        }
+
+        FirebaseBootstrap.disable(error);
+      }
+    }
+
+    yield getLocalRides()
+        .where((ride) =>
+            ride.status == RideStatus.accepted ||
+            ride.status == RideStatus.arriving ||
+            ride.status == RideStatus.inProgress ||
+            ride.status == RideStatus.completed)
+        .toList();
+    await for (final _ in _localRideChanges.stream) {
+      yield getLocalRides()
+          .where((ride) =>
+              ride.status == RideStatus.accepted ||
+              ride.status == RideStatus.arriving ||
+              ride.status == RideStatus.inProgress ||
+              ride.status == RideStatus.completed)
+          .toList();
     }
   }
 
@@ -197,6 +223,7 @@ class RideRepository {
           scheduledTime: scheduledTime,
         );
         _upsertLocalRide(ride);
+        _notifyLocalRides();
         return ride;
       } catch (error) {
         if (requireFirestore) {
@@ -238,6 +265,7 @@ class RideRepository {
           status: status,
         );
         _upsertLocalRide(ride);
+        _notifyLocalRides();
         return ride;
       } catch (error) {
         if (!kIsWeb) {
@@ -260,10 +288,38 @@ class RideRepository {
     return updatedRide;
   }
 
+  Future<Ride> acceptRide(String rideId) async {
+    if (FirebaseBootstrap.isEnabled) {
+      try {
+        final ride = await _firestore.acceptRide(rideId);
+        _upsertLocalRide(ride);
+        _notifyLocalRides();
+        return ride;
+      } catch (error) {
+        if (!kIsWeb) {
+          rethrow;
+        }
+
+        FirebaseBootstrap.disable(error);
+      }
+    }
+
+    final index = _rides.indexWhere((ride) => ride.id == rideId);
+
+    if (index == -1) {
+      throw ArgumentError.value(rideId, 'rideId', 'Ride not found');
+    }
+
+    final updatedRide = _rides[index].copyWith(status: RideStatus.accepted);
+    _rides[index] = updatedRide;
+    _notifyLocalRides();
+    return updatedRide;
+  }
+
   Future<Ride> cancelRide(String rideId) {
     return updateRideStatus(
       rideId: rideId,
-      status: RideStatus.declined,
+      status: RideStatus.cancelled,
     );
   }
 
@@ -283,7 +339,7 @@ class RideRepository {
 
   List<Ride> _requestedLocalRides() {
     return getLocalRides()
-        .where((ride) => ride.status == RideStatus.requested)
+        .where((ride) => ride.status == RideStatus.pending)
         .toList();
   }
 
@@ -315,7 +371,7 @@ class RideRepository {
       vehicleType: vehicleType,
       rideType: rideType,
       fare: fare,
-      status: RideStatus.requested,
+      status: RideStatus.pending,
       createdAt: DateTime.now(),
       scheduledDate: scheduledDate,
       scheduledTime: scheduledTime,

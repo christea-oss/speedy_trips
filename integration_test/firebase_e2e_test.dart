@@ -137,7 +137,7 @@ void main() {
       );
       cleanupRideId = createdRide.id;
 
-      expect(createdRide.status, RideStatus.requested);
+      expect(createdRide.status, RideStatus.pending);
 
       final savedRide = await firestore
           .collection('rides')
@@ -155,7 +155,7 @@ void main() {
       expect(savedRideData?['vehicleType'], VehicleType.blackSuv.id);
       expect(savedRideData?['rideType'], 'Scheduled Ride');
       expect(savedRideData?['fare'], 52);
-      expect(savedRideData?['status'], RideStatus.requested.id);
+      expect(savedRideData?['status'], RideStatus.pending.id);
       expect(savedRideData?['riderId'], uid);
       expect(savedRideData?['riderUid'], uid);
       expect(savedRideData?['createdAt'], isA<Timestamp>());

@@ -33,12 +33,13 @@ class _MyRidesState extends State<MyRides> {
     switch (status) {
       case RideStatus.completed:
         return Colors.green;
-      case RideStatus.requested:
+      case RideStatus.pending:
         return Colors.orange;
       case RideStatus.accepted:
+      case RideStatus.arriving:
       case RideStatus.inProgress:
         return Colors.blue;
-      case RideStatus.declined:
+      case RideStatus.cancelled:
         return Colors.red;
     }
   }
@@ -54,7 +55,7 @@ class _MyRidesState extends State<MyRides> {
       body: Padding(
         padding: const EdgeInsets.all(20),
         child: StreamBuilder<List<Ride>>(
-          stream: RideRepository.instance.watchRides(),
+          stream: RideRepository.instance.watchRiderRides(),
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting &&
                 !snapshot.hasData) {
@@ -95,7 +96,7 @@ class _MyRidesState extends State<MyRides> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  'Your past trips',
+                  'Your rides',
                   style: TextStyle(
                     color: Colors.white70,
                     fontSize: 14,

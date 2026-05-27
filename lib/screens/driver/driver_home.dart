@@ -22,6 +22,7 @@ class _DriverHomeState extends State<DriverHome> {
   bool isOnline = false;
   Ride? activeRide;
   final Set<String> declinedRideIds = <String>{};
+  final Set<String> dismissedCompletedRideIds = <String>{};
 
   @override
   void initState() {
@@ -30,20 +31,42 @@ class _DriverHomeState extends State<DriverHome> {
   }
 
   Future<void> updateStatus(Ride ride, RideStatus status) async {
-    final updatedRide = await RideRepository.instance.updateStatus(
-      ride,
-      status,
-    );
+    try {
+      final updatedRide = await RideRepository.instance.updateStatus(
+        ride,
+        status,
+      );
 
-    if (!mounted) return;
+      if (!mounted) return;
 
-    setState(() {
-      activeRide = updatedRide;
-    });
+      setState(() {
+        activeRide = updatedRide;
+      });
+    } catch (error) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Ride update failed. ${error.toString()}')),
+      );
+    }
   }
 
-  Future<void> acceptRide(Ride ride) {
-    return updateStatus(ride, RideStatus.accepted);
+  Future<void> acceptRide(Ride ride) async {
+    try {
+      final acceptedRide = await RideRepository.instance.acceptRide(ride.id);
+
+      if (!mounted) return;
+
+      setState(() {
+        activeRide = acceptedRide;
+      });
+    } catch (error) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Ride accept failed. ${error.toString()}')),
+      );
+    }
   }
 
   void declineRide(Ride ride) {
@@ -59,20 +82,15 @@ class _DriverHomeState extends State<DriverHome> {
   }
 
   Future<void> completeTrip(Ride ride) async {
-    final updatedRide = await RideRepository.instance.updateStatus(
-      ride,
-      RideStatus.completed,
-    );
-
-    if (!mounted) return;
-
-    setState(() {
-      activeRide = updatedRide;
-    });
+    await updateStatus(ride, RideStatus.completed);
   }
 
   void findNextRide() {
     setState(() {
+      final activeRideId = activeRide?.id;
+      if (activeRideId != null) {
+        dismissedCompletedRideIds.add(activeRideId);
+      }
       activeRide = null;
     });
   }
@@ -110,16 +128,10 @@ class _DriverHomeState extends State<DriverHome> {
           child: Padding(
             padding: const EdgeInsets.fromLTRB(20, 20, 20, 48),
             child: StreamBuilder<List<Ride>>(
-              stream: RideRepository.instance.watchRequestedRides(),
+              stream: RideRepository.instance.watchAssignedDriverRides(),
               builder: (context, snapshot) {
-                final requestedRides = (snapshot.data ?? const <Ride>[])
-                    .where((ride) => !declinedRideIds.contains(ride.id))
-                    .toList();
-                final currentRide = activeRide?.status == RideStatus.accepted ||
-                        activeRide?.status == RideStatus.inProgress ||
-                        activeRide?.status == RideStatus.completed
-                    ? activeRide
-                    : null;
+                final assignedRides = snapshot.data ?? const <Ride>[];
+                final currentRide = _currentAssignedRide(assignedRides);
 
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -161,8 +173,19 @@ class _DriverHomeState extends State<DriverHome> {
                         ),
                       )
                     else
-                      _availableRidesSection(
-                        rides: requestedRides,
+                      StreamBuilder<List<Ride>>(
+                        stream: RideRepository.instance.watchPendingRides(),
+                        builder: (context, pendingSnapshot) {
+                          final requestedRides =
+                              (pendingSnapshot.data ?? const <Ride>[])
+                                  .where((ride) =>
+                                      !declinedRideIds.contains(ride.id))
+                                  .toList();
+
+                          return _availableRidesSection(
+                            rides: requestedRides,
+                          );
+                        },
                       ),
                     const SizedBox(height: 24),
                   ],
@@ -173,6 +196,37 @@ class _DriverHomeState extends State<DriverHome> {
         ),
       ),
     );
+  }
+
+  Ride? _currentAssignedRide(List<Ride> assignedRides) {
+    final activeRideId = activeRide?.id;
+
+    if (activeRideId != null) {
+      for (final ride in assignedRides) {
+        if (ride.id == activeRideId &&
+            ride.status != RideStatus.cancelled &&
+            !dismissedCompletedRideIds.contains(ride.id)) {
+          return ride;
+        }
+      }
+    }
+
+    for (final ride in assignedRides) {
+      if (ride.status == RideStatus.accepted ||
+          ride.status == RideStatus.arriving ||
+          ride.status == RideStatus.inProgress) {
+        return ride;
+      }
+    }
+
+    for (final ride in assignedRides) {
+      if (ride.status == RideStatus.completed &&
+          !dismissedCompletedRideIds.contains(ride.id)) {
+        return ride;
+      }
+    }
+
+    return null;
   }
 
   Widget _availableRidesSection({required List<Ride> rides}) {
@@ -352,7 +406,7 @@ class _DriverHomeState extends State<DriverHome> {
           ),
         ),
         const SizedBox(height: 30),
-        if (ride.status == RideStatus.requested) ...[
+        if (ride.status == RideStatus.pending) ...[
           Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -390,6 +444,43 @@ class _DriverHomeState extends State<DriverHome> {
         ] else if (ride.status == RideStatus.accepted) ...[
           const Text(
             'Ride Accepted',
+            style: TextStyle(
+              color: Colors.green,
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 20),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.green,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+              onPressed: () async {
+                await updateStatus(ride, RideStatus.arriving);
+
+                if (!mounted) return;
+
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Driver marked as arriving'),
+                  ),
+                );
+              },
+              child: const Text(
+                'Mark Arriving',
+                style: TextStyle(fontSize: 16),
+              ),
+            ),
+          ),
+        ] else if (ride.status == RideStatus.arriving) ...[
+          const Text(
+            'Driver Arriving',
             style: TextStyle(
               color: Colors.green,
               fontSize: 20,
@@ -491,16 +582,18 @@ class _DriverHomeState extends State<DriverHome> {
 
   String _panelTitle(RideStatus status) {
     switch (status) {
-      case RideStatus.requested:
+      case RideStatus.pending:
         return 'Available Ride Request';
       case RideStatus.accepted:
         return 'Accepted Ride';
+      case RideStatus.arriving:
+        return 'Driver Arriving';
       case RideStatus.inProgress:
         return 'Active Trip';
       case RideStatus.completed:
         return 'Completed Trip';
-      case RideStatus.declined:
-        return 'Declined Ride';
+      case RideStatus.cancelled:
+        return 'Cancelled Ride';
     }
   }
 }
