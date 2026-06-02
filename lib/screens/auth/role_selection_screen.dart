@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'admin_login_screen.dart';
 import 'driver_login_screen.dart';
 import 'driver_signup_screen.dart';
 import 'rider_login_screen.dart';
@@ -94,6 +95,14 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen>
                         onSecondary: () =>
                             open(context, const DriverSignupScreen()),
                       ),
+                      _RoleCard(
+                        title: 'Admin',
+                        subtitle:
+                            'Review rides, drivers, statuses, and operations.',
+                        icon: Icons.admin_panel_settings,
+                        primaryLabel: 'Admin Login',
+                        onPrimary: () => open(context, const AdminLoginScreen()),
+                      ),
                     ];
 
                     return Column(
@@ -142,6 +151,8 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen>
                               Expanded(child: cards[0]),
                               const SizedBox(width: 20),
                               Expanded(child: cards[1]),
+                              const SizedBox(width: 20),
+                              Expanded(child: cards[2]),
                             ],
                           )
                         else
@@ -150,6 +161,8 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen>
                               cards[0],
                               const SizedBox(height: 18),
                               cards[1],
+                              const SizedBox(height: 18),
+                              cards[2],
                             ],
                           ),
                       ],
@@ -170,18 +183,18 @@ class _RoleCard extends StatelessWidget {
   final String subtitle;
   final IconData icon;
   final String primaryLabel;
-  final String secondaryLabel;
+  final String? secondaryLabel;
   final VoidCallback onPrimary;
-  final VoidCallback onSecondary;
+  final VoidCallback? onSecondary;
 
   const _RoleCard({
     required this.title,
     required this.subtitle,
     required this.icon,
     required this.primaryLabel,
-    required this.secondaryLabel,
+    this.secondaryLabel,
     required this.onPrimary,
-    required this.onSecondary,
+    this.onSecondary,
   });
 
   @override
@@ -264,19 +277,21 @@ class _RoleCard extends StatelessWidget {
               style: const TextStyle(fontWeight: FontWeight.bold),
             ),
           ),
-          const SizedBox(height: 10),
-          OutlinedButton(
-            style: OutlinedButton.styleFrom(
-              foregroundColor: Colors.white,
-              side: BorderSide(color: Colors.amber.withOpacity(.7)),
-              padding: const EdgeInsets.symmetric(vertical: 14),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
+          if (secondaryLabel != null && onSecondary != null) ...[
+            const SizedBox(height: 10),
+            OutlinedButton(
+              style: OutlinedButton.styleFrom(
+                foregroundColor: Colors.white,
+                side: BorderSide(color: Colors.amber.withOpacity(.7)),
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
               ),
+              onPressed: onSecondary,
+              child: Text(secondaryLabel!),
             ),
-            onPressed: onSecondary,
-            child: Text(secondaryLabel),
-          ),
+          ],
         ],
       ),
     );

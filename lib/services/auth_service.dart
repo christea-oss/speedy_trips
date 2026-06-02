@@ -115,6 +115,7 @@ class AuthService {
     required String email,
     required String password,
     required UserRole role,
+    bool createProfileIfMissing = true,
   }) async {
     _checkFirebaseEnabled();
     await _signOutAnonymousUser();
@@ -133,6 +134,14 @@ class AuthService {
 
     final savedRole = await roleForUser(user.uid);
     if (savedRole == null) {
+      if (!createProfileIfMissing) {
+        await signOut();
+        throw FirebaseAuthException(
+          code: 'missing-user-role',
+          message: 'This account is not registered as a ${role.label}.',
+        );
+      }
+
       await _saveUserProfile(
         user: user,
         role: role,

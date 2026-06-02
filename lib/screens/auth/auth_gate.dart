@@ -7,6 +7,7 @@ import '../../models/user_role.dart';
 import '../../services/auth_error_messages.dart';
 import '../../services/auth_service.dart';
 import '../../services/firebase_bootstrap.dart';
+import '../admin/admin_dashboard.dart';
 import '../driver/driver_home.dart';
 import '../rider/rider_home.dart';
 import 'role_selection_screen.dart';
@@ -52,6 +53,8 @@ class AuthGate extends StatelessWidget {
                 return const RiderHome();
               case UserRole.driver:
                 return const DriverHome();
+              case UserRole.admin:
+                return const AdminDashboard();
             }
           },
         );

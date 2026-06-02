@@ -1,6 +1,7 @@
 enum UserRole {
   rider,
   driver,
+  admin,
 }
 
 extension UserRoleLabel on UserRole {
@@ -10,6 +11,8 @@ extension UserRoleLabel on UserRole {
         return 'rider';
       case UserRole.driver:
         return 'driver';
+      case UserRole.admin:
+        return 'admin';
     }
   }
 
@@ -19,6 +22,8 @@ extension UserRoleLabel on UserRole {
         return 'Rider';
       case UserRole.driver:
         return 'Driver';
+      case UserRole.admin:
+        return 'Admin';
     }
   }
 }
@@ -29,6 +34,8 @@ UserRole userRoleFromId(String id) {
       return UserRole.rider;
     case 'driver':
       return UserRole.driver;
+    case 'admin':
+      return UserRole.admin;
     default:
       throw ArgumentError.value(id, 'id', 'Unknown user role id');
   }

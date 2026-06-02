@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../../models/user_role.dart';
 import '../../services/auth_error_messages.dart';
 import '../../services/auth_service.dart';
+import '../admin/admin_dashboard.dart';
 import '../driver/driver_home.dart';
 import '../rider/rider_home.dart';
 
@@ -76,6 +77,7 @@ class _RoleAuthScreenState extends State<RoleAuthScreen>
           email: emailController.text.trim(),
           password: passwordController.text,
           role: widget.role,
+          createProfileIfMissing: widget.role != UserRole.admin,
         );
       }
 
@@ -115,6 +117,8 @@ class _RoleAuthScreenState extends State<RoleAuthScreen>
         return const RiderHome();
       case UserRole.driver:
         return const DriverHome();
+      case UserRole.admin:
+        return const AdminDashboard();
     }
   }
 
@@ -206,9 +210,7 @@ class _RoleAuthScreenState extends State<RoleAuthScreen>
                         ),
                         const SizedBox(height: 10),
                         Text(
-                          widget.role == UserRole.rider
-                              ? 'Book and manage SpeedyTrips rides.'
-                              : 'Accept and manage SpeedyTrips ride requests.',
+                          roleDescription,
                           textAlign: TextAlign.center,
                           style: const TextStyle(
                             color: Colors.white70,
@@ -339,6 +341,19 @@ class _RoleAuthScreenState extends State<RoleAuthScreen>
         ),
       ),
     );
+  }
+}
+
+extension on _RoleAuthScreenState {
+  String get roleDescription {
+    switch (widget.role) {
+      case UserRole.rider:
+        return 'Book and manage SpeedyTrips rides.';
+      case UserRole.driver:
+        return 'Accept and manage SpeedyTrips ride requests.';
+      case UserRole.admin:
+        return 'Review SpeedyTrips rides, drivers, and trip status.';
+    }
   }
 }
 
