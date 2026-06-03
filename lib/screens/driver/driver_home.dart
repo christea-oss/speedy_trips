@@ -610,7 +610,7 @@ class _DriverHomeState extends State<DriverHome> {
           _rideDetail('Dropoff', ride.dropoffLocation),
           _rideDetail('Service area', ride.zone),
           _rideDetail('Ride type', ride.rideType),
-          _rideDetail('Price', ride.priceLabel),
+          _rideDetail('Fare', ride.priceLabel),
           if (actions.isNotEmpty) ...[
             const SizedBox(height: 16),
             Column(

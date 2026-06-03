@@ -191,6 +191,18 @@ class _MyRidesState extends State<MyRides> {
             ),
           ),
           Text(
+            'Ride type: ${ride.rideType}',
+            style: const TextStyle(
+              color: Colors.white70,
+            ),
+          ),
+          Text(
+            'Zone: ${ride.zone}',
+            style: const TextStyle(
+              color: Colors.white70,
+            ),
+          ),
+          Text(
             'Fare: ${ride.priceLabel}',
             style: const TextStyle(
               color: Colors.amber,

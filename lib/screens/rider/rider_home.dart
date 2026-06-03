@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../models/vehicle_type.dart';
 import '../../repositories/ride_repository.dart';
 import '../../services/auth_service.dart';
+import '../../services/pricing_engine.dart';
 import '../auth/role_selection_screen.dart';
 import '../shared/ride_success_screen.dart';
 import 'my_rides.dart';
@@ -24,40 +25,7 @@ class _RiderHomeState extends State<RiderHome> {
   );
   final TextEditingController dropoffController = TextEditingController();
 
-  final Map<String, Map<String, int>> zonePricing = {
-    'Zone 1 - Central Birmingham': {
-      'black_ride': 25,
-      'black_suv': 35,
-    },
-    'Zone 2 - South Metro': {
-      'black_ride': 35,
-      'black_suv': 45,
-    },
-    'Zone 3 - Hoover Corridor': {
-      'black_ride': 45,
-      'black_suv': 55,
-    },
-    'Zone 4 - North Corridor': {
-      'black_ride': 55,
-      'black_suv': 70,
-    },
-    'Zone 5 - East Corridor': {
-      'black_ride': 55,
-      'black_suv': 70,
-    },
-    'Zone 6 - West Corridor': {
-      'black_ride': 55,
-      'black_suv': 70,
-    },
-    'Zone 7 - Tuscaloosa Route': {
-      'black_ride': 100,
-      'black_suv': 120,
-    },
-    'Zone 8 - Alabama Statewide': {
-      'black_ride': 150,
-      'black_suv': 190,
-    },
-  };
+  final Map<String, int> zonePricing = PricingEngine.zoneBaseFares;
 
   final Map<String, String> zoneCoverage = {
     'Zone 1 - Central Birmingham': 'Downtown, UAB, Southside, Five Points, BJCC',
@@ -136,9 +104,18 @@ class _RiderHomeState extends State<RiderHome> {
 
   bool get isScheduled => scheduleType == 'scheduled';
 
+  String get currentRideType => isScheduled ? 'Scheduled Ride' : 'Ride Now';
+
+  FareEstimate get currentFareEstimate {
+    return PricingEngine.estimate(
+      zone: selectedZone,
+      pickupLocation: currentPickupLocation,
+      rideType: currentRideType,
+    );
+  }
+
   int get currentFare {
-    if (selectedZone == null) return 0;
-    return zonePricing[selectedZone]?[vehicleType] ?? 0;
+    return currentFareEstimate.total;
   }
 
   String get selectedServiceAreaName {
@@ -195,12 +172,7 @@ class _RiderHomeState extends State<RiderHome> {
   }
 
   bool isAirportLocation(String value) {
-    final normalizedValue = normalizeLocation(value);
-    return normalizedValue.contains('bhm') ||
-        normalizedValue.contains('birmingham airport') ||
-        normalizedValue.contains('airport') ||
-        normalizedValue.contains('door 4l') ||
-        normalizedValue.contains('dl door 4l');
+    return PricingEngine.isAirportPickup(value);
   }
 
   String zoneForAddress(String value) {
@@ -349,8 +321,9 @@ class _RiderHomeState extends State<RiderHome> {
       return;
     }
 
-    final rideType = isScheduled ? 'Scheduled Ride' : 'Ride Now';
-    final price = '\$$currentFare';
+    final rideType = currentRideType;
+    final fareEstimate = currentFareEstimate;
+    final fareSummary = fareSummaryText(fareEstimate);
     var isBooking = false;
 
     showDialog(
@@ -367,13 +340,13 @@ class _RiderHomeState extends State<RiderHome> {
                     'Type: $rideType\n'
                     'Date: ${selectedDate!.month}/${selectedDate!.day}/${selectedDate!.year}\n'
                     'Time: ${selectedTime!.format(dialogContext)}\n'
-                    'Price: $price'
+                    '\n$fareSummary'
                 : 'Pickup: $currentPickupLocation\n'
                     'Dropoff: ${customDropoff ?? selectedServiceAreaName}\n'
                     'Service Area: $selectedServiceAreaName\n'
                     'Vehicle: ${vehicleType == "black_ride" ? "Black Ride" : "Black SUV"}\n'
                     'Type: $rideType\n'
-                    'Price: $price',
+                    '\n$fareSummary',
           ),
           actions: [
             TextButton(
@@ -398,7 +371,7 @@ class _RiderHomeState extends State<RiderHome> {
                               ? VehicleType.blackRide
                               : VehicleType.blackSuv,
                           rideType: rideType,
-                          fare: currentFare,
+                          fare: fareEstimate.total,
                           scheduledDate: selectedDate,
                           scheduledTime: selectedTime,
                           requireFirestore: true,
@@ -497,289 +470,258 @@ class _RiderHomeState extends State<RiderHome> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-            const Text(
-              'Saved Places',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 10),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: savedLocations.map((location) {
-                return ActionChip(
-                  label: Text(location),
-                  onPressed: () => handleSavedSelect(location),
-                );
-              }).toList(),
-            ),
-            const SizedBox(height: 20),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.amber,
-                  foregroundColor: Colors.black,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const MyRides(),
-                    ),
-                  );
-                },
-                child: const Text(
-                  'View Ride History',
-                  style: TextStyle(fontWeight: FontWeight.bold),
-                ),
-              ),
-            ),
-            const SizedBox(height: 20),
-            const Text(
-              'Pickup location',
-              style: TextStyle(color: Colors.white70),
-            ),
-            const SizedBox(height: 6),
-            TextField(
-              controller: pickupController,
-              onChanged: handlePickupChanged,
-              decoration: InputDecoration(
-                hintText: defaultPickupLocation,
-                hintStyle: const TextStyle(color: Colors.white54),
-                filled: true,
-                fillColor: Colors.white10,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              style: const TextStyle(color: Colors.white),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Pickup: $currentPickupLocation',
-              style: const TextStyle(color: Colors.white70),
-            ),
-            const SizedBox(height: 16),
-            const Text(
-              'Where to?',
-              style: TextStyle(color: Colors.white70),
-            ),
-            const SizedBox(height: 6),
-            TextField(
-              controller: dropoffController,
-              onChanged: handleDropoffChanged,
-              decoration: InputDecoration(
-                hintText: 'Enter address or city',
-                hintStyle: const TextStyle(color: Colors.white54),
-                filled: true,
-                fillColor: Colors.white10,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              style: const TextStyle(color: Colors.white),
-            ),
-            const SizedBox(height: 10),
-            DropdownButtonFormField<String>(
-              key: ValueKey(selectedZone ?? 'service-area-empty'),
-              value: selectedZone,
-              isExpanded: true,
-              dropdownColor: Colors.black,
-              decoration: InputDecoration(
-                filled: true,
-                fillColor: Colors.white10,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              hint: const Text(
-                'Select service area',
-                style: TextStyle(color: Colors.white54),
-              ),
-              style: const TextStyle(color: Colors.white),
-              items: zonePricing.keys.map((zone) {
-                return DropdownMenuItem(
-                  value: zone,
-                  child: Text(
-                    serviceAreaName(zone),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                );
-              }).toList(),
-              selectedItemBuilder: (context) {
-                return zonePricing.keys.map((zone) {
-                  return Text(
-                    serviceAreaName(zone),
-                    overflow: TextOverflow.ellipsis,
-                  );
-                }).toList();
-              },
-              onChanged: handleZoneSelect,
-            ),
-            if (dropoffText.isNotEmpty) ...[
-              const SizedBox(height: 8),
-              Text(
-                'Dropoff: $dropoffText',
-                style: const TextStyle(color: Colors.white70),
-              ),
-            ],
-            if (selectedZone != null) ...[
-              const SizedBox(height: 8),
-              Text(
-                serviceAreaText,
-                style: const TextStyle(
-                  color: Colors.amber,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                'Coverage: ${zoneCoverage[selectedZone]}',
-                style: const TextStyle(color: Colors.white70),
-              ),
-            ],
-            const SizedBox(height: 20),
-            Row(
-              children: [
-                ChoiceChip(
-                  label: const Text('Now'),
-                  selected: scheduleType == 'now',
-                  onSelected: (_) {
-                    setState(() {
-                      scheduleType = 'now';
-                    });
-                  },
-                ),
-                const SizedBox(width: 10),
-                ChoiceChip(
-                  label: const Text('Schedule'),
-                  selected: scheduleType == 'scheduled',
-                  onSelected: (_) {
-                    setState(() {
-                      scheduleType = 'scheduled';
-                    });
-                  },
-                ),
-              ],
-            ),
-            if (isScheduled) ...[
-              const SizedBox(height: 20),
-              ElevatedButton(
-                onPressed: pickDate,
-                child: Text(
-                  selectedDate == null
-                      ? 'Select Date'
-                      : 'Date: ${selectedDate!.month}/${selectedDate!.day}/${selectedDate!.year}',
-                ),
-              ),
-              const SizedBox(height: 10),
-              ElevatedButton(
-                onPressed: pickTime,
-                child: Text(
-                  selectedTime == null
-                      ? 'Select Time'
-                      : 'Time: ${selectedTime!.format(context)}',
-                ),
-              ),
-            ],
-            const SizedBox(height: 20),
-            Container(
-              height: 160,
-              width: double.infinity,
-              decoration: BoxDecoration(
-                color: Colors.white10,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.white24),
-              ),
-              child: const Center(
-                child: Text(
-                  'Map Preview Placeholder\nBirmingham',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: Colors.white70),
-                ),
-              ),
-            ),
-            if (selectedZone != null) ...[
-              const SizedBox(height: 20),
               const Text(
-                'Choose Your Ride',
+                'Saved Places',
                 style: TextStyle(
                   color: Colors.white,
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
                 ),
               ),
-              const SizedBox(height: 12),
-              _vehicleCard(
-                label: 'Black Ride',
-                type: 'black_ride',
-                price: zonePricing[selectedZone]!['black_ride']!,
-              ),
-              const SizedBox(height: 12),
-              _vehicleCard(
-                label: 'Black SUV',
-                type: 'black_suv',
-                price: zonePricing[selectedZone]!['black_suv']!,
-              ),
-              const SizedBox(height: 16),
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: Colors.white10,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.amber.withOpacity(.4)),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      '$serviceAreaText - Flat Rate',
-                      style: const TextStyle(color: Colors.white70),
-                    ),
-                    Text(
-                      '\$$currentFare',
-                      style: const TextStyle(
-                        color: Colors.amber,
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 20),
-              Text(
-                isScheduled
-                    ? selectedDate != null && selectedTime != null
-                        ? 'Scheduled Trip: $serviceAreaText - ${selectedDate!.month}/${selectedDate!.day}/${selectedDate!.year} at ${selectedTime!.format(context)} - \$$currentFare'
-                        : 'Scheduled Trip: $serviceAreaText - Select date and time - \$$currentFare'
-                    : 'Ride Now Trip: $serviceAreaText - \$$currentFare',
-                style: const TextStyle(
-                  color: Colors.white70,
-                  fontSize: 16,
-                ),
-                textAlign: TextAlign.center,
+              const SizedBox(height: 10),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: savedLocations.map((location) {
+                  return ActionChip(
+                    label: Text(location),
+                    onPressed: () => handleSavedSelect(location),
+                  );
+                }).toList(),
               ),
               const SizedBox(height: 20),
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
-                  onPressed: handleConfirmRide,
-                  child: Text(
-                    isScheduled ? 'Schedule Ride' : 'Confirm Ride',
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.amber,
+                    foregroundColor: Colors.black,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const MyRides(),
+                      ),
+                    );
+                  },
+                  child: const Text(
+                    'View Ride History',
+                    style: TextStyle(fontWeight: FontWeight.bold),
                   ),
                 ),
               ),
-            ],
+              const SizedBox(height: 20),
+              const Text(
+                'Pickup location',
+                style: TextStyle(color: Colors.white70),
+              ),
+              const SizedBox(height: 6),
+              TextField(
+                controller: pickupController,
+                onChanged: handlePickupChanged,
+                decoration: InputDecoration(
+                  hintText: defaultPickupLocation,
+                  hintStyle: const TextStyle(color: Colors.white54),
+                  filled: true,
+                  fillColor: Colors.white10,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                style: const TextStyle(color: Colors.white),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Pickup: $currentPickupLocation',
+                style: const TextStyle(color: Colors.white70),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Where to?',
+                style: TextStyle(color: Colors.white70),
+              ),
+              const SizedBox(height: 6),
+              TextField(
+                controller: dropoffController,
+                onChanged: handleDropoffChanged,
+                decoration: InputDecoration(
+                  hintText: 'Enter address or city',
+                  hintStyle: const TextStyle(color: Colors.white54),
+                  filled: true,
+                  fillColor: Colors.white10,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                style: const TextStyle(color: Colors.white),
+              ),
+              const SizedBox(height: 10),
+              DropdownButtonFormField<String>(
+                key: ValueKey(selectedZone ?? 'service-area-empty'),
+                value: selectedZone,
+                isExpanded: true,
+                dropdownColor: Colors.black,
+                decoration: InputDecoration(
+                  filled: true,
+                  fillColor: Colors.white10,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                hint: const Text(
+                  'Select service area',
+                  style: TextStyle(color: Colors.white54),
+                ),
+                style: const TextStyle(color: Colors.white),
+                items: zonePricing.keys.map((zone) {
+                  return DropdownMenuItem(
+                    value: zone,
+                    child: Text(
+                      serviceAreaName(zone),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  );
+                }).toList(),
+                selectedItemBuilder: (context) {
+                  return zonePricing.keys.map((zone) {
+                    return Text(
+                      serviceAreaName(zone),
+                      overflow: TextOverflow.ellipsis,
+                    );
+                  }).toList();
+                },
+                onChanged: handleZoneSelect,
+              ),
+              if (dropoffText.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                Text(
+                  'Dropoff: $dropoffText',
+                  style: const TextStyle(color: Colors.white70),
+                ),
+              ],
+              if (selectedZone != null) ...[
+                const SizedBox(height: 8),
+                Text(
+                  serviceAreaText,
+                  style: const TextStyle(
+                    color: Colors.amber,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Coverage: ${zoneCoverage[selectedZone]}',
+                  style: const TextStyle(color: Colors.white70),
+                ),
+              ],
+              const SizedBox(height: 20),
+              Row(
+                children: [
+                  ChoiceChip(
+                    label: const Text('Now'),
+                    selected: scheduleType == 'now',
+                    onSelected: (_) {
+                      setState(() {
+                        scheduleType = 'now';
+                      });
+                    },
+                  ),
+                  const SizedBox(width: 10),
+                  ChoiceChip(
+                    label: const Text('Schedule'),
+                    selected: scheduleType == 'scheduled',
+                    onSelected: (_) {
+                      setState(() {
+                        scheduleType = 'scheduled';
+                      });
+                    },
+                  ),
+                ],
+              ),
+              if (isScheduled) ...[
+                const SizedBox(height: 20),
+                ElevatedButton(
+                  onPressed: pickDate,
+                  child: Text(
+                    selectedDate == null
+                        ? 'Select Date'
+                        : 'Date: ${selectedDate!.month}/${selectedDate!.day}/${selectedDate!.year}',
+                  ),
+                ),
+                const SizedBox(height: 10),
+                ElevatedButton(
+                  onPressed: pickTime,
+                  child: Text(
+                    selectedTime == null
+                        ? 'Select Time'
+                        : 'Time: ${selectedTime!.format(context)}',
+                  ),
+                ),
+              ],
+              const SizedBox(height: 20),
+              Container(
+                height: 160,
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  color: Colors.white10,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.white24),
+                ),
+                child: const Center(
+                  child: Text(
+                    'Map Preview Placeholder\nBirmingham',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: Colors.white70),
+                  ),
+                ),
+              ),
+              if (selectedZone != null) ...[
+                const SizedBox(height: 20),
+                const Text(
+                  'Choose Your Ride',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                _vehicleCard(
+                  label: 'Black Ride',
+                  type: 'black_ride',
+                ),
+                const SizedBox(height: 12),
+                _vehicleCard(
+                  label: 'Black SUV',
+                  type: 'black_suv',
+                ),
+                const SizedBox(height: 16),
+                fareSummaryCard(currentFareEstimate, serviceAreaText),
+                const SizedBox(height: 20),
+                Text(
+                  tripSummaryText(serviceAreaText),
+                  style: const TextStyle(
+                    color: Colors.white70,
+                    fontSize: 16,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 20),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: handleConfirmRide,
+                    child: Text(
+                      isScheduled ? 'Schedule Ride' : 'Confirm Ride',
+                    ),
+                  ),
+                ),
+              ],
             ],
           ),
         ),
@@ -790,7 +732,6 @@ class _RiderHomeState extends State<RiderHome> {
   Widget _vehicleCard({
     required String label,
     required String type,
-    required int price,
   }) {
     final selected = vehicleType == type;
 
@@ -819,7 +760,7 @@ class _RiderHomeState extends State<RiderHome> {
               style: const TextStyle(color: Colors.white, fontSize: 16),
             ),
             Text(
-              '\$$price',
+              'Included',
               style: const TextStyle(
                 color: Colors.amber,
                 fontWeight: FontWeight.bold,
@@ -829,5 +770,104 @@ class _RiderHomeState extends State<RiderHome> {
         ),
       ),
     );
+  }
+
+  Widget fareSummaryCard(FareEstimate fareEstimate, String serviceAreaText) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white10,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.amber.withOpacity(.4)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Text(
+                  '$serviceAreaText Fare Estimate',
+                  style: const TextStyle(color: Colors.white70),
+                ),
+              ),
+              Text(
+                PricingEngine.formatCurrency(fareEstimate.total),
+                style: const TextStyle(
+                  color: Colors.amber,
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          fareLine('Zone base fare', fareEstimate.baseFare),
+          if (fareEstimate.hasAirportPickupFee)
+            fareLine('Airport pickup fee', fareEstimate.airportPickupFee),
+          if (fareEstimate.hasScheduledRideFee)
+            fareLine('Scheduled ride fee', fareEstimate.scheduledRideFee),
+        ],
+      ),
+    );
+  }
+
+  Widget fareLine(String label, int amount) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 4),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label, style: const TextStyle(color: Colors.white70)),
+          Text(
+            PricingEngine.formatCurrency(amount),
+            style: const TextStyle(color: Colors.white),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String fareSummaryText(FareEstimate fareEstimate) {
+    final lines = [
+      'Fare Summary:',
+      'Zone base fare: ${PricingEngine.formatCurrency(fareEstimate.baseFare)}',
+    ];
+
+    if (fareEstimate.hasAirportPickupFee) {
+      lines.add(
+        'Airport pickup fee: ${PricingEngine.formatCurrency(fareEstimate.airportPickupFee)}',
+      );
+    }
+
+    if (fareEstimate.hasScheduledRideFee) {
+      lines.add(
+        'Scheduled ride fee: ${PricingEngine.formatCurrency(fareEstimate.scheduledRideFee)}',
+      );
+    }
+
+    lines.add(
+      'Estimated fare: ${PricingEngine.formatCurrency(fareEstimate.total)}',
+    );
+    return lines.join('\n');
+  }
+
+  String tripSummaryText(String serviceAreaText) {
+    if (!isScheduled) {
+      return 'Ride Now Trip: $serviceAreaText - '
+          '${PricingEngine.formatCurrency(currentFare)}';
+    }
+
+    if (selectedDate == null || selectedTime == null) {
+      return 'Scheduled Trip: $serviceAreaText - Select date and time - '
+          '${PricingEngine.formatCurrency(currentFare)}';
+    }
+
+    return 'Scheduled Trip: $serviceAreaText - '
+        '${selectedDate!.month}/${selectedDate!.day}/${selectedDate!.year} '
+        'at ${selectedTime!.format(context)} - '
+        '${PricingEngine.formatCurrency(currentFare)}';
   }
 }
