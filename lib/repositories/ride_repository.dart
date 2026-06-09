@@ -282,7 +282,10 @@ class RideRepository {
       throw ArgumentError.value(rideId, 'rideId', 'Ride not found');
     }
 
-    final updatedRide = _rides[index].copyWith(status: status);
+    final updatedRide = _rides[index].copyWith(
+      status: status,
+      updatedAt: DateTime.now(),
+    );
     _rides[index] = updatedRide;
     _notifyLocalRides();
     return updatedRide;
@@ -310,7 +313,10 @@ class RideRepository {
       throw ArgumentError.value(rideId, 'rideId', 'Ride not found');
     }
 
-    final updatedRide = _rides[index].copyWith(status: RideStatus.accepted);
+    final updatedRide = _rides[index].copyWith(
+      status: RideStatus.accepted,
+      updatedAt: DateTime.now(),
+    );
     _rides[index] = updatedRide;
     _notifyLocalRides();
     return updatedRide;
@@ -360,7 +366,10 @@ class RideRepository {
       throw StateError('Only completed rides can be rated.');
     }
 
-    final updatedRide = ride.copyWith(riderRating: rating);
+    final updatedRide = ride.copyWith(
+      riderRating: rating,
+      updatedAt: DateTime.now(),
+    );
     _rides[index] = updatedRide;
     _notifyLocalRides();
     return updatedRide;
@@ -373,7 +382,10 @@ class RideRepository {
         status: status,
       );
     } on ArgumentError {
-      final updatedRide = ride.copyWith(status: status);
+      final updatedRide = ride.copyWith(
+        status: status,
+        updatedAt: DateTime.now(),
+      );
       _upsertLocalRide(updatedRide);
       _notifyLocalRides();
       return updatedRide;

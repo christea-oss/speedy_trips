@@ -266,6 +266,7 @@ class FirestoreRideRepository {
         data['status'] as String? ?? RideStatus.pending.id,
       ),
       createdAt: _dateTimeFromFirestore(data['createdAt']) ?? DateTime.now(),
+      updatedAt: _dateTimeFromFirestore(data['updatedAt']),
       riderId: _stringFromFirestore(data['riderId']) ??
           _stringFromFirestore(data['riderUid']),
       assignedDriver: _stringFromFirestore(data['assignedDriver']) ??

@@ -4,6 +4,7 @@ import '../../models/ride.dart';
 import '../../models/ride_status.dart';
 import '../../models/vehicle_type.dart';
 import '../../repositories/ride_repository.dart';
+import '../../repositories/user_profile_repository.dart';
 
 class MyRides extends StatefulWidget {
   const MyRides({super.key});
@@ -81,6 +82,14 @@ class _MyRidesState extends State<MyRides> {
 
   String formatDate(DateTime date) {
     return '${date.month}/${date.day}/${date.year}';
+  }
+
+  DateTime receiptDate(Ride ride) {
+    if (ride.status == RideStatus.completed) {
+      return ride.updatedAt ?? ride.createdAt;
+    }
+
+    return ride.createdAt;
   }
 
   Color statusColor(RideStatus status) {
@@ -215,6 +224,8 @@ class _MyRidesState extends State<MyRides> {
               color: Colors.white70,
             ),
           ),
+          const SizedBox(height: 12),
+          _riderReceipt(ride),
           const SizedBox(height: 8),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -238,6 +249,72 @@ class _MyRidesState extends State<MyRides> {
           ),
           buildRatingStars(ride),
         ],
+      ),
+    );
+  }
+
+  Widget _riderReceipt(Ride ride) {
+    return FutureBuilder<String>(
+      future: UserProfileRepository.instance.displayNameForUser(
+        ride.assignedDriver,
+        fallback: 'Not assigned',
+      ),
+      builder: (context, snapshot) {
+        final driverName = snapshot.data ??
+            (ride.assignedDriver == null ? 'Not assigned' : 'Loading...');
+
+        return Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: Colors.black26,
+            border: Border.all(color: Colors.white12),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Trip Receipt',
+                style: TextStyle(
+                  color: Colors.amber,
+                  fontSize: 15,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 8),
+              _receiptDetail('Ride ID', ride.id),
+              _receiptDetail('Pickup', ride.pickupLocation),
+              _receiptDetail('Dropoff', ride.dropoffLocation),
+              _receiptDetail('Driver', driverName),
+              _receiptDetail('Ride date', formatDate(receiptDate(ride))),
+              _receiptDetail('Ride type', ride.rideType),
+              _receiptDetail('Fare paid', ride.priceLabel),
+              _receiptDetail('Ride status', ride.status.label),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _receiptDetail(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: RichText(
+        text: TextSpan(
+          style: const TextStyle(color: Colors.white70, fontSize: 13),
+          children: [
+            TextSpan(
+              text: '$label: ',
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            TextSpan(text: value.isEmpty ? 'Not provided' : value),
+          ],
+        ),
       ),
     );
   }

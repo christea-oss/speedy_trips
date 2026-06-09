@@ -82,6 +82,8 @@ class _AdminDashboardState extends State<AdminDashboard> {
                           const SizedBox(height: 18),
                           _rideStatusOverview(rides),
                           const SizedBox(height: 18),
+                          _earningsVisibility(rides),
+                          const SizedBox(height: 18),
                           _ridesSection(filteredRides),
                           const SizedBox(height: 18),
                           _driversSection(drivers, rides),
@@ -111,6 +113,9 @@ class _AdminDashboardState extends State<AdminDashboard> {
             ride.status == RideStatus.arriving ||
             ride.status == RideStatus.inProgress)
         .length;
+    final completedRevenue = _sumFares(
+      rides.where((ride) => ride.status == RideStatus.completed).toList(),
+    );
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -121,6 +126,11 @@ class _AdminDashboardState extends State<AdminDashboard> {
           _metricCard('Active', active.toString(), Icons.play_circle),
           _metricCard('Pending', pending.toString(), Icons.schedule),
           _metricCard('Completed', completed.toString(), Icons.done_all),
+          _metricCard(
+            'Revenue Est.',
+            _currency(completedRevenue),
+            Icons.attach_money,
+          ),
         ];
 
         if (!useGrid) {
@@ -238,6 +248,80 @@ class _AdminDashboardState extends State<AdminDashboard> {
               final count = rides.where((ride) => ride.status == status).length;
               return _statusCountPill(status, count);
             }).toList(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _earningsVisibility(List<Ride> rides) {
+    final completedRides = rides
+        .where((ride) => ride.status == RideStatus.completed)
+        .toList();
+    final totalRevenue = _sumFares(completedRides);
+    final visibleFareCount = rides.where((ride) => ride.fare > 0).length;
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: _panelDecoration(),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Earnings Visibility',
+            style: TextStyle(
+              color: Colors.amber,
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'Revenue estimate is based on completed ride fares.',
+            style: TextStyle(color: Colors.white70, fontSize: 14),
+          ),
+          const SizedBox(height: 14),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final isWide = constraints.maxWidth >= 680;
+              final cards = [
+                _metricCard(
+                  'Platform Revenue Est.',
+                  _currency(totalRevenue),
+                  Icons.account_balance,
+                ),
+                _metricCard(
+                  'Completed Rides',
+                  completedRides.length.toString(),
+                  Icons.done_all,
+                ),
+                _metricCard(
+                  'Ride Fares Visible',
+                  visibleFareCount.toString(),
+                  Icons.receipt_long,
+                ),
+              ];
+
+              if (!isWide) {
+                return Column(
+                  children: [
+                    for (final card in cards) ...[
+                      card,
+                      if (card != cards.last) const SizedBox(height: 10),
+                    ],
+                  ],
+                );
+              }
+
+              return Row(
+                children: [
+                  for (final card in cards) ...[
+                    Expanded(child: card),
+                    if (card != cards.last) const SizedBox(width: 12),
+                  ],
+                ],
+              );
+            },
           ),
         ],
       ),
@@ -412,6 +496,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
     final completed = rides
         .where((ride) => ride.status == RideStatus.completed)
         .toList();
+    final driverEarnings = _sumFares(completed);
     final active = rides
         .where((ride) =>
             ride.status == RideStatus.accepted ||
@@ -449,6 +534,11 @@ class _AdminDashboardState extends State<AdminDashboard> {
             runSpacing: 8,
             children: [
               _driverPill('Trips', completed.length.toString(), Icons.route),
+              _driverPill(
+                'Earnings',
+                _currency(driverEarnings),
+                Icons.account_balance_wallet,
+              ),
               _driverPill('Active', active.toString(), Icons.play_circle),
               _driverPill('Rating', _ratingLabel(completed), Icons.star),
             ],
@@ -649,6 +739,14 @@ class _AdminDashboardState extends State<AdminDashboard> {
     final average = ratings.reduce((total, rating) => total + rating) /
         ratings.length;
     return '${average.toStringAsFixed(1)}/5';
+  }
+
+  int _sumFares(List<Ride> rides) {
+    return rides.fold(0, (total, ride) => total + ride.fare);
+  }
+
+  String _currency(int amount) {
+    return '\$$amount';
   }
 
   Color _statusColor(RideStatus status) {

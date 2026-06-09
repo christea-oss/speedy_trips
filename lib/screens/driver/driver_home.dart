@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../models/ride.dart';
 import '../../models/ride_status.dart';
 import '../../repositories/ride_repository.dart';
+import '../../repositories/user_profile_repository.dart';
 import '../../services/auth_service.dart';
 import '../auth/role_selection_screen.dart';
 
@@ -201,6 +202,8 @@ class _DriverHomeState extends State<DriverHome> {
                             assignedRides: assignedRides,
                             pendingRides: pendingRides,
                           ),
+                          const SizedBox(height: 16),
+                          _earningsDashboard(completedRides),
                           const SizedBox(height: 22),
                           _rideSection(
                             title: 'New Request',
@@ -408,6 +411,96 @@ class _DriverHomeState extends State<DriverHome> {
     );
   }
 
+  Widget _earningsDashboard(List<Ride> completedRides) {
+    final totalEarnings = _sumFares(completedRides);
+    final today = DateTime.now();
+    final todaysEarnings = _sumFares(
+      completedRides
+          .where((ride) => _isSameDay(_completedDate(ride), today))
+          .toList(),
+    );
+    final weeklyEarnings = _sumFares(
+      completedRides
+          .where((ride) => _isInCurrentWeek(_completedDate(ride), today))
+          .toList(),
+    );
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: _panelDecoration(),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Driver Earnings',
+            style: TextStyle(
+              color: Colors.amber,
+              fontSize: 22,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 6),
+          const Text(
+            'Completed trips update these totals automatically.',
+            style: TextStyle(color: Colors.white70, fontSize: 14),
+          ),
+          const SizedBox(height: 14),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final isWide = constraints.maxWidth >= 680;
+              final cards = [
+                _metricCard(
+                  'Total Earnings',
+                  _currency(totalEarnings),
+                  Icons.account_balance_wallet,
+                ),
+                _metricCard(
+                  'Today\'s Earnings',
+                  _currency(todaysEarnings),
+                  Icons.today,
+                ),
+                _metricCard(
+                  'Weekly Earnings',
+                  _currency(weeklyEarnings),
+                  Icons.date_range,
+                ),
+                _metricCard(
+                  'Completed Trips',
+                  completedRides.length.toString(),
+                  Icons.done_all,
+                ),
+              ];
+
+              if (!isWide) {
+                return Column(
+                  children: [
+                    for (final card in cards) ...[
+                      card,
+                      if (card != cards.last) const SizedBox(height: 10),
+                    ],
+                  ],
+                );
+              }
+
+              return Wrap(
+                spacing: 12,
+                runSpacing: 12,
+                children: cards
+                    .map(
+                      (card) => SizedBox(
+                        width: (constraints.maxWidth - 12) / 2,
+                        child: card,
+                      ),
+                    )
+                    .toList(),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _rideSection({
     required String title,
     required String subtitle,
@@ -500,6 +593,8 @@ class _DriverHomeState extends State<DriverHome> {
     return _rideCard(
       ride: ride,
       actions: [
+        _driverReceipt(ride),
+        const SizedBox(height: 10),
         if (ride.riderRating != null)
           _rideDetail('Rider rating', '${ride.riderRating}/5')
         else
@@ -620,6 +715,49 @@ class _DriverHomeState extends State<DriverHome> {
           ],
         ],
       ),
+    );
+  }
+
+  Widget _driverReceipt(Ride ride) {
+    return FutureBuilder<String>(
+      future: UserProfileRepository.instance.displayNameForUser(
+        ride.riderId,
+        fallback: 'Unknown rider',
+      ),
+      builder: (context, snapshot) {
+        final riderName = snapshot.data ??
+            (ride.riderId == null ? 'Unknown rider' : 'Loading...');
+
+        return Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: const Color(0xFF12100B),
+            border: Border.all(color: Colors.white12),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Driver Trip Receipt',
+                style: TextStyle(
+                  color: Colors.amber,
+                  fontSize: 15,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 8),
+              _rideDetail('Ride ID', ride.id),
+              _rideDetail('Rider', riderName),
+              _rideDetail('Pickup', ride.pickupLocation),
+              _rideDetail('Dropoff', ride.dropoffLocation),
+              _rideDetail('Fare earned', ride.priceLabel),
+              _rideDetail('Completed date', _formatDate(_completedDate(ride))),
+            ],
+          ),
+        );
+      },
     );
   }
 
@@ -797,6 +935,32 @@ class _DriverHomeState extends State<DriverHome> {
     final average = ratings.reduce((total, rating) => total + rating) /
         ratings.length;
     return '${average.toStringAsFixed(1)}/5';
+  }
+
+  int _sumFares(List<Ride> rides) {
+    return rides.fold(0, (total, ride) => total + ride.fare);
+  }
+
+  String _currency(int amount) {
+    return '\$$amount';
+  }
+
+  String _formatDate(DateTime date) {
+    return '${date.month}/${date.day}/${date.year}';
+  }
+
+  DateTime _completedDate(Ride ride) {
+    return ride.updatedAt ?? ride.createdAt;
+  }
+
+  bool _isInCurrentWeek(DateTime date, DateTime now) {
+    final startOfToday = DateTime(now.year, now.month, now.day);
+    final weekStart = startOfToday.subtract(
+      Duration(days: startOfToday.weekday - DateTime.monday),
+    );
+    final nextWeekStart = weekStart.add(const Duration(days: 7));
+
+    return !date.isBefore(weekStart) && date.isBefore(nextWeekStart);
   }
 
   bool _isSameDay(DateTime first, DateTime second) {

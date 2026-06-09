@@ -13,6 +13,7 @@ class Ride {
   final int fare;
   final RideStatus status;
   final DateTime createdAt;
+  final DateTime? updatedAt;
   final String? riderId;
   final String? assignedDriver;
   final int? riderRating;
@@ -29,6 +30,7 @@ class Ride {
     required this.fare,
     required this.status,
     required this.createdAt,
+    this.updatedAt,
     this.riderId,
     this.assignedDriver,
     this.riderRating,
@@ -48,6 +50,7 @@ class Ride {
     int? fare,
     RideStatus? status,
     DateTime? createdAt,
+    DateTime? updatedAt,
     String? riderId,
     String? assignedDriver,
     int? riderRating,
@@ -64,6 +67,7 @@ class Ride {
       fare: fare ?? this.fare,
       status: status ?? this.status,
       createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
       riderId: riderId ?? this.riderId,
       assignedDriver: assignedDriver ?? this.assignedDriver,
       riderRating: riderRating ?? this.riderRating,
