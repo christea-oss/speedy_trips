@@ -19,6 +19,8 @@ class AdminDashboard extends StatefulWidget {
 class _AdminDashboardState extends State<AdminDashboard> {
   final searchController = TextEditingController();
   RideStatus? selectedStatus;
+  RideStatus? selectedScheduledStatus;
+  DateTime? selectedScheduledDate;
   String searchText = '';
 
   @override
@@ -66,6 +68,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
               builder: (context, driversSnapshot) {
                 final drivers = driversSnapshot.data ?? const <AppUser>[];
                 final filteredRides = _filteredRides(rides);
+                final scheduledRides = _filteredScheduledRides(rides);
 
                 return SingleChildScrollView(
                   physics: const AlwaysScrollableScrollPhysics(),
@@ -83,6 +86,8 @@ class _AdminDashboardState extends State<AdminDashboard> {
                           _rideStatusOverview(rides),
                           const SizedBox(height: 18),
                           _earningsVisibility(rides),
+                          const SizedBox(height: 18),
+                          _scheduledRideManagement(scheduledRides),
                           const SizedBox(height: 18),
                           _ridesSection(filteredRides),
                           const SizedBox(height: 18),
@@ -116,6 +121,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
     final completedRevenue = _sumFares(
       rides.where((ride) => ride.status == RideStatus.completed).toList(),
     );
+    final scheduled = rides.where((ride) => ride.isScheduled).length;
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -126,6 +132,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
           _metricCard('Active', active.toString(), Icons.play_circle),
           _metricCard('Pending', pending.toString(), Icons.schedule),
           _metricCard('Completed', completed.toString(), Icons.done_all),
+          _metricCard('Scheduled', scheduled.toString(), Icons.event),
           _metricCard(
             'Revenue Est.',
             _currency(completedRevenue),
@@ -384,6 +391,146 @@ class _AdminDashboardState extends State<AdminDashboard> {
     );
   }
 
+  Widget _scheduledRideManagement(List<Ride> rides) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: _panelDecoration(),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Expanded(
+                child: Text(
+                  'Scheduled Ride Management',
+                  style: TextStyle(
+                    color: Colors.amber,
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              Text(
+                '${rides.length} shown',
+                style: const TextStyle(color: Colors.white70),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: [
+              _scheduledStatusChip(null),
+              for (final status in RideStatus.values)
+                _scheduledStatusChip(status),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              OutlinedButton.icon(
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: Colors.amber,
+                  side: const BorderSide(color: Colors.amber),
+                ),
+                onPressed: _pickScheduledDateFilter,
+                icon: const Icon(Icons.calendar_month),
+                label: Text(
+                  selectedScheduledDate == null
+                      ? 'Filter by date'
+                      : _formatDate(selectedScheduledDate!),
+                ),
+              ),
+              if (selectedScheduledDate != null)
+                TextButton.icon(
+                  onPressed: () {
+                    setState(() {
+                      selectedScheduledDate = null;
+                    });
+                  },
+                  icon: const Icon(Icons.close),
+                  label: const Text('Clear date'),
+                ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          if (rides.isEmpty)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 28),
+              child: Center(
+                child: Text(
+                  'No scheduled rides match the current filters',
+                  style: TextStyle(color: Colors.white70, fontSize: 16),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            )
+          else
+            ListView.builder(
+              itemCount: rides.length,
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemBuilder: (context, index) {
+                return Padding(
+                  padding: EdgeInsets.only(
+                    bottom: index == rides.length - 1 ? 0 : 12,
+                  ),
+                  child: _scheduledRideCard(rides[index]),
+                );
+              },
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _scheduledRideCard(Ride ride) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.black,
+        border: Border.all(color: Colors.amber.withOpacity(0.38)),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Text(
+                  ride.dropoffLocation.isEmpty
+                      ? 'Scheduled ride ${ride.id}'
+                      : ride.dropoffLocation,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 19,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              _statusBadge(ride.status),
+            ],
+          ),
+          const SizedBox(height: 10),
+          _detail('Ride ID', ride.id),
+          _detail('Rider ID', ride.riderId ?? 'Not assigned'),
+          _detail('Driver ID', ride.assignedDriver ?? 'Not assigned'),
+          _detail('Pickup', ride.pickupLocation),
+          _detail('Dropoff', ride.dropoffLocation),
+          _detail('Fare', ride.priceLabel),
+          _detail('Scheduled time', _scheduledDateLabel(ride)),
+          _detail('Status', ride.status.label),
+        ],
+      ),
+    );
+  }
+
   Widget _driversSection(List<AppUser> drivers, List<Ride> rides) {
     return Container(
       padding: const EdgeInsets.all(16),
@@ -478,7 +625,9 @@ class _AdminDashboardState extends State<AdminDashboard> {
           _detail('Dropoff', ride.dropoffLocation),
           _detail('Zone', ride.zone),
           _detail('Vehicle', ride.vehicleType.label),
-          _detail('Ride type', ride.rideType),
+          _detail('Ride type', ride.rideTypeLabel),
+          if (ride.isScheduled)
+            _detail('Scheduled time', _scheduledDateLabel(ride)),
           _detail('Fare', ride.priceLabel),
           _detail('Created', _formatDateTime(ride.createdAt)),
           _detail('Rider ID', ride.riderId ?? 'Not assigned'),
@@ -604,6 +753,30 @@ class _AdminDashboardState extends State<AdminDashboard> {
     );
   }
 
+  Widget _scheduledStatusChip(RideStatus? status) {
+    final isSelected = selectedScheduledStatus == status;
+    final label = status?.label ?? 'All scheduled statuses';
+
+    return ChoiceChip(
+      selected: isSelected,
+      label: Text(label),
+      selectedColor: Colors.amber,
+      backgroundColor: Colors.black,
+      side: BorderSide(
+        color: isSelected ? Colors.amber : Colors.white24,
+      ),
+      labelStyle: TextStyle(
+        color: isSelected ? Colors.black : Colors.white,
+        fontWeight: FontWeight.bold,
+      ),
+      onSelected: (_) {
+        setState(() {
+          selectedScheduledStatus = status;
+        });
+      },
+    );
+  }
+
   Widget _statusCountPill(RideStatus status, int count) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -709,21 +882,88 @@ class _AdminDashboardState extends State<AdminDashboard> {
         ride.dropoffLocation,
         ride.zone,
         ride.vehicleType.label,
-        ride.rideType,
+        ride.rideTypeLabel,
         ride.status.label,
         ride.riderId ?? '',
         ride.assignedDriver ?? '',
         ride.priceLabel,
+        if (ride.isScheduled) _scheduledDateLabel(ride),
       ].join(' ').toLowerCase();
 
       return searchable.contains(query);
     }).toList();
   }
 
+  List<Ride> _filteredScheduledRides(List<Ride> rides) {
+    final filtered = rides.where((ride) {
+      if (!ride.isScheduled) {
+        return false;
+      }
+
+      if (selectedScheduledStatus != null &&
+          ride.status != selectedScheduledStatus) {
+        return false;
+      }
+
+      final selectedDate = selectedScheduledDate;
+      final scheduledDate = ride.effectiveScheduledDateTime;
+      if (selectedDate != null &&
+          (scheduledDate == null || !_isSameDay(scheduledDate, selectedDate))) {
+        return false;
+      }
+
+      return true;
+    }).toList();
+
+    filtered.sort((a, b) {
+      final first = a.effectiveScheduledDateTime ?? a.createdAt;
+      final second = b.effectiveScheduledDateTime ?? b.createdAt;
+      return first.compareTo(second);
+    });
+
+    return filtered;
+  }
+
+  Future<void> _pickScheduledDateFilter() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: selectedScheduledDate ?? DateTime.now(),
+      firstDate: DateTime(2020),
+      lastDate: DateTime(2100),
+    );
+
+    if (picked == null) {
+      return;
+    }
+
+    setState(() {
+      selectedScheduledDate = picked;
+    });
+  }
+
   String _formatDateTime(DateTime dateTime) {
     final hour = dateTime.hour.toString().padLeft(2, '0');
     final minute = dateTime.minute.toString().padLeft(2, '0');
     return '${dateTime.month}/${dateTime.day}/${dateTime.year} $hour:$minute';
+  }
+
+  String _formatDate(DateTime dateTime) {
+    return '${dateTime.month}/${dateTime.day}/${dateTime.year}';
+  }
+
+  String _scheduledDateLabel(Ride ride) {
+    final scheduledDateTime = ride.effectiveScheduledDateTime;
+    if (scheduledDateTime == null) {
+      return 'Not scheduled';
+    }
+
+    return _formatDateTime(scheduledDateTime);
+  }
+
+  bool _isSameDay(DateTime first, DateTime second) {
+    return first.year == second.year &&
+        first.month == second.month &&
+        first.day == second.day;
   }
 
   String _ratingLabel(List<Ride> completedRides) {

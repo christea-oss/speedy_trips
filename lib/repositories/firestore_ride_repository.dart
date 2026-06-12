@@ -110,6 +110,10 @@ class FirestoreRideRepository {
     }
 
     final document = _rides.doc();
+    final scheduledDateTime = _combineScheduledDateTime(
+      scheduledDate,
+      scheduledTime,
+    );
     final ride = Ride(
       id: document.id,
       pickupLocation: pickupLocation,
@@ -121,6 +125,7 @@ class FirestoreRideRepository {
       status: RideStatus.pending,
       createdAt: DateTime.now(),
       riderId: riderId,
+      scheduledDateTime: scheduledDateTime,
       scheduledDate: scheduledDate,
       scheduledTime: scheduledTime,
     );
@@ -201,6 +206,123 @@ class FirestoreRideRepository {
     );
   }
 
+  Future<Ride> cancelScheduledRide(String rideId) async {
+    final riderId = AuthService.instance.currentUser?.uid;
+    if (riderId == null) {
+      throw StateError('A signed-in rider is required to cancel a ride.');
+    }
+
+    final document = _rides.doc(rideId);
+
+    await _firestore.runTransaction((transaction) async {
+      final snapshot = await transaction.get(document);
+      if (!snapshot.exists) {
+        throw StateError('Ride was not found.');
+      }
+
+      final data = snapshot.data() ?? <String, dynamic>{};
+      final status = rideStatusFromId(
+        data['status'] as String? ?? RideStatus.pending.id,
+      );
+      final rideRiderId = _stringFromFirestore(data['riderId']) ??
+          _stringFromFirestore(data['riderUid']);
+      final assignedDriver = _stringFromFirestore(data['assignedDriver']) ??
+          _stringFromFirestore(data['driverId']);
+
+      if (rideRiderId != null && rideRiderId != riderId) {
+        throw StateError('Only the rider who booked this trip can cancel it.');
+      }
+
+      if (!_firestoreDataIsScheduled(data)) {
+        throw StateError('Only scheduled rides can be cancelled here.');
+      }
+
+      if (status != RideStatus.pending || assignedDriver != null) {
+        throw StateError(
+          'Scheduled rides can only be cancelled before accepted.',
+        );
+      }
+
+      transaction.update(document, {
+        'status': RideStatus.cancelled.id,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+    });
+
+    final snapshot = await document.get();
+    return _rideFromSnapshot(snapshot);
+  }
+
+  Future<Ride> updateScheduledRideDateTime({
+    required String rideId,
+    required DateTime scheduledDate,
+    required TimeOfDay scheduledTime,
+  }) async {
+    final riderId = AuthService.instance.currentUser?.uid;
+    if (riderId == null) {
+      throw StateError('A signed-in rider is required to edit a ride.');
+    }
+
+    final scheduledDateTime = _combineScheduledDateTime(
+      scheduledDate,
+      scheduledTime,
+    );
+    if (scheduledDateTime == null) {
+      throw StateError('Scheduled ride date and time are required.');
+    }
+
+    final document = _rides.doc(rideId);
+
+    await _firestore.runTransaction((transaction) async {
+      final snapshot = await transaction.get(document);
+      if (!snapshot.exists) {
+        throw StateError('Ride was not found.');
+      }
+
+      final data = snapshot.data() ?? <String, dynamic>{};
+      final status = rideStatusFromId(
+        data['status'] as String? ?? RideStatus.pending.id,
+      );
+      final rideRiderId = _stringFromFirestore(data['riderId']) ??
+          _stringFromFirestore(data['riderUid']);
+      final assignedDriver = _stringFromFirestore(data['assignedDriver']) ??
+          _stringFromFirestore(data['driverId']);
+
+      if (rideRiderId != null && rideRiderId != riderId) {
+        throw StateError('Only the rider who booked this trip can edit it.');
+      }
+
+      if (!_firestoreDataIsScheduled(data)) {
+        throw StateError('Only scheduled rides can be edited.');
+      }
+
+      if (status != RideStatus.pending || assignedDriver != null) {
+        throw StateError('Scheduled rides can only be edited before accepted.');
+      }
+
+      transaction.update(document, {
+        'rideType': 'scheduled',
+        'scheduledDateTime': Timestamp.fromDate(scheduledDateTime),
+        'ScheduledDateTime': Timestamp.fromDate(scheduledDateTime),
+        'scheduledDate': Timestamp.fromDate(
+          DateTime(
+            scheduledDate.year,
+            scheduledDate.month,
+            scheduledDate.day,
+          ),
+        ),
+        'scheduledTime': {
+          'hour': scheduledTime.hour,
+          'minute': scheduledTime.minute,
+        },
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+    });
+
+    final snapshot = await document.get();
+    return _rideFromSnapshot(snapshot);
+  }
+
   Future<Ride> rateRide({
     required String rideId,
     required int rating,
@@ -251,6 +373,16 @@ class FirestoreRideRepository {
   Ride _rideFromSnapshot(DocumentSnapshot<Map<String, dynamic>> snapshot) {
     final data = snapshot.data() ?? <String, dynamic>{};
     final scheduledTime = data['scheduledTime'];
+    final scheduledDateTime =
+        _dateTimeFromFirestore(data['scheduledDateTime']) ??
+        _dateTimeFromFirestore(data['ScheduledDateTime']);
+    final scheduledDate = _dateTimeFromFirestore(data['scheduledDate']);
+    final parsedScheduledTime = scheduledTime is Map<String, dynamic>
+        ? TimeOfDay(
+            hour: scheduledTime['hour'] as int? ?? 0,
+            minute: scheduledTime['minute'] as int? ?? 0,
+          )
+        : null;
 
     return Ride(
       id: snapshot.id,
@@ -260,7 +392,7 @@ class FirestoreRideRepository {
       vehicleType: vehicleTypeFromId(
         data['vehicleType'] as String? ?? VehicleType.blackSuv.id,
       ),
-      rideType: data['rideType'] as String? ?? 'Ride Now',
+      rideType: data['rideType'] as String? ?? 'now',
       fare: (data['fare'] as num?)?.toInt() ?? 0,
       status: rideStatusFromId(
         data['status'] as String? ?? RideStatus.pending.id,
@@ -272,13 +404,10 @@ class FirestoreRideRepository {
       assignedDriver: _stringFromFirestore(data['assignedDriver']) ??
           _stringFromFirestore(data['driverId']),
       riderRating: (data['riderRating'] as num?)?.toInt(),
-      scheduledDate: _dateTimeFromFirestore(data['scheduledDate']),
-      scheduledTime: scheduledTime is Map<String, dynamic>
-          ? TimeOfDay(
-              hour: scheduledTime['hour'] as int? ?? 0,
-              minute: scheduledTime['minute'] as int? ?? 0,
-            )
-          : null,
+      scheduledDateTime: scheduledDateTime ??
+          _combineScheduledDateTime(scheduledDate, parsedScheduledTime),
+      scheduledDate: scheduledDate,
+      scheduledTime: parsedScheduledTime,
     );
   }
 
@@ -286,6 +415,8 @@ class FirestoreRideRepository {
     Ride ride, {
     required String riderId,
   }) {
+    final scheduledDateTime = ride.effectiveScheduledDateTime;
+
     return {
       'pickupLocation': ride.pickupLocation,
       'dropoffLocation': ride.dropoffLocation,
@@ -297,6 +428,12 @@ class FirestoreRideRepository {
       'assignedDriver': ride.assignedDriver,
       'driverId': ride.assignedDriver,
       'createdAt': Timestamp.fromDate(ride.createdAt),
+      'scheduledDateTime': scheduledDateTime == null
+          ? null
+          : Timestamp.fromDate(scheduledDateTime),
+      'ScheduledDateTime': scheduledDateTime == null
+          ? null
+          : Timestamp.fromDate(scheduledDateTime),
       'scheduledDate': ride.scheduledDate == null
           ? null
           : Timestamp.fromDate(ride.scheduledDate!),
@@ -310,6 +447,35 @@ class FirestoreRideRepository {
       'riderUid': riderId,
       'updatedAt': FieldValue.serverTimestamp(),
     };
+  }
+
+  bool _firestoreDataIsScheduled(Map<String, dynamic> data) {
+    final rideType = data['rideType'] as String? ?? '';
+    final normalizedRideType = rideType.toLowerCase();
+
+    return data['scheduledDateTime'] != null ||
+        data['ScheduledDateTime'] != null ||
+        data['scheduledDate'] != null ||
+        data['scheduledTime'] != null ||
+        normalizedRideType == 'scheduled' ||
+        normalizedRideType.contains('scheduled');
+  }
+
+  DateTime? _combineScheduledDateTime(
+    DateTime? scheduledDate,
+    TimeOfDay? scheduledTime,
+  ) {
+    if (scheduledDate == null || scheduledTime == null) {
+      return null;
+    }
+
+    return DateTime(
+      scheduledDate.year,
+      scheduledDate.month,
+      scheduledDate.day,
+      scheduledTime.hour,
+      scheduledTime.minute,
+    );
   }
 
   DateTime? _dateTimeFromFirestore(Object? value) {

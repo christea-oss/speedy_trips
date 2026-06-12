@@ -168,6 +168,12 @@ class _DriverHomeState extends State<DriverHome> {
                 final pendingRides = (pendingSnapshot.data ?? const <Ride>[])
                     .where((ride) => !declinedRideIds.contains(ride.id))
                     .toList();
+                final upcomingScheduledRides = _sortScheduledRides(
+                  pendingRides.where((ride) => ride.isScheduled).toList(),
+                );
+                final newRequestRides = pendingRides
+                    .where((ride) => !ride.isScheduled)
+                    .toList();
                 final activeRides = assignedRides
                     .where((ride) =>
                         ride.status == RideStatus.accepted ||
@@ -206,6 +212,20 @@ class _DriverHomeState extends State<DriverHome> {
                           _earningsDashboard(completedRides),
                           const SizedBox(height: 22),
                           _rideSection(
+                            title: 'Upcoming Scheduled Rides',
+                            subtitle: canAcceptNewRequests
+                                ? 'Scheduled rides waiting for driver acceptance'
+                                : 'Go online to accept scheduled rides',
+                            emptyText: canAcceptNewRequests
+                                ? 'No upcoming scheduled rides'
+                                : 'Scheduled ride acceptance is paused while offline or busy',
+                            rides: canAcceptNewRequests
+                                ? upcomingScheduledRides
+                                : const <Ride>[],
+                            builder: _scheduledRideCard,
+                          ),
+                          const SizedBox(height: 22),
+                          _rideSection(
                             title: 'New Request',
                             subtitle: canAcceptNewRequests
                                 ? 'Pending rides available to accept'
@@ -214,7 +234,7 @@ class _DriverHomeState extends State<DriverHome> {
                                 ? 'No new ride requests'
                                 : 'New requests are paused while offline or busy',
                             rides: canAcceptNewRequests
-                                ? pendingRides
+                                ? newRequestRides
                                 : const <Ride>[],
                             builder: _availableRideCard,
                           ),
@@ -582,6 +602,31 @@ class _DriverHomeState extends State<DriverHome> {
     );
   }
 
+  Widget _scheduledRideCard(Ride ride) {
+    return _rideCard(
+      ride: ride,
+      actions: [
+        ElevatedButton.icon(
+          style: _goldButtonStyle(),
+          onPressed: availability == DriverAvailability.online
+              ? () => acceptRide(ride)
+              : null,
+          icon: const Icon(Icons.event_available),
+          label: const Text(
+            'Accept Scheduled Ride',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          ),
+        ),
+        const SizedBox(height: 10),
+        OutlinedButton(
+          style: _outlineButtonStyle(),
+          onPressed: () => declineRide(ride),
+          child: const Text('Decline', style: TextStyle(fontSize: 16)),
+        ),
+      ],
+    );
+  }
+
   Widget _activeRideCard(Ride ride) {
     return _rideCard(
       ride: ride,
@@ -704,7 +749,9 @@ class _DriverHomeState extends State<DriverHome> {
           _rideDetail('Pickup', ride.pickupLocation),
           _rideDetail('Dropoff', ride.dropoffLocation),
           _rideDetail('Service area', ride.zone),
-          _rideDetail('Ride type', ride.rideType),
+          _rideDetail('Ride type', ride.rideTypeLabel),
+          if (ride.isScheduled)
+            _rideDetail('Scheduled time', _scheduledDateLabel(ride)),
           _rideDetail('Fare', ride.priceLabel),
           if (actions.isNotEmpty) ...[
             const SizedBox(height: 16),
@@ -951,6 +998,26 @@ class _DriverHomeState extends State<DriverHome> {
 
   DateTime _completedDate(Ride ride) {
     return ride.updatedAt ?? ride.createdAt;
+  }
+
+  List<Ride> _sortScheduledRides(List<Ride> rides) {
+    return rides
+      ..sort((a, b) {
+        final first = a.effectiveScheduledDateTime ?? a.createdAt;
+        final second = b.effectiveScheduledDateTime ?? b.createdAt;
+        return first.compareTo(second);
+      });
+  }
+
+  String _scheduledDateLabel(Ride ride) {
+    final scheduledDateTime = ride.effectiveScheduledDateTime;
+    if (scheduledDateTime == null) {
+      return 'Not scheduled';
+    }
+
+    final hour = scheduledDateTime.hour.toString().padLeft(2, '0');
+    final minute = scheduledDateTime.minute.toString().padLeft(2, '0');
+    return '${scheduledDateTime.month}/${scheduledDateTime.day}/${scheduledDateTime.year} $hour:$minute';
   }
 
   bool _isInCurrentWeek(DateTime date, DateTime now) {

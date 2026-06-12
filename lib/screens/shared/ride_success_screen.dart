@@ -22,6 +22,7 @@ class RideSuccessScreen extends StatelessWidget {
       initialData: ride,
       builder: (context, snapshot) {
         final currentRide = snapshot.data ?? ride;
+        final scheduledDateTime = currentRide.effectiveScheduledDateTime;
         final fareEstimate = PricingEngine.estimate(
           zone: currentRide.zone,
           pickupLocation: currentRide.pickupLocation,
@@ -75,8 +76,8 @@ class RideSuccessScreen extends StatelessWidget {
                           'Pickup: ${currentRide.pickupLocation}\n'
                           'Dropoff: ${currentRide.dropoffLocation}\n'
                           'Zone: ${currentRide.zone}\n'
-                          'Type: ${currentRide.rideType}\n'
-                          '${currentRide.scheduledDate != null ? "Date: ${currentRide.scheduledDate!.month}/${currentRide.scheduledDate!.day}/${currentRide.scheduledDate!.year}\n" : ""}'
+                          'Type: ${currentRide.rideTypeLabel}\n'
+                          '${scheduledDateTime != null ? "Date: ${scheduledDateTime.month}/${scheduledDateTime.day}/${scheduledDateTime.year}\n" : ""}'
                           '${currentRide.scheduledTime != null ? "Time: ${currentRide.scheduledTime!.format(context)}\n" : ""}'
                           '\n${_fareSummary(currentRide, fareEstimate)}',
                           style: const TextStyle(

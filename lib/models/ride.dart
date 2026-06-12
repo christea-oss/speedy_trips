@@ -17,6 +17,7 @@ class Ride {
   final String? riderId;
   final String? assignedDriver;
   final int? riderRating;
+  final DateTime? scheduledDateTime;
   final DateTime? scheduledDate;
   final TimeOfDay? scheduledTime;
 
@@ -34,11 +35,55 @@ class Ride {
     this.riderId,
     this.assignedDriver,
     this.riderRating,
+    this.scheduledDateTime,
     this.scheduledDate,
     this.scheduledTime,
   });
 
   String get priceLabel => '\$$fare';
+
+  bool get isScheduled {
+    final normalizedRideType = rideType.toLowerCase();
+    return normalizedRideType == 'scheduled' ||
+        normalizedRideType.contains('scheduled') ||
+        scheduledDateTime != null ||
+        scheduledDate != null ||
+        scheduledTime != null;
+  }
+
+  String get rideTypeLabel {
+    final normalizedRideType = rideType.toLowerCase();
+
+    if (normalizedRideType == 'now' || normalizedRideType == 'ride now') {
+      return 'Ride Now';
+    }
+
+    if (normalizedRideType == 'scheduled' ||
+        normalizedRideType.contains('scheduled')) {
+      return 'Scheduled Ride';
+    }
+
+    return rideType;
+  }
+
+  DateTime? get effectiveScheduledDateTime {
+    if (scheduledDateTime != null) {
+      return scheduledDateTime;
+    }
+
+    if (scheduledDate == null) {
+      return null;
+    }
+
+    final time = scheduledTime ?? const TimeOfDay(hour: 0, minute: 0);
+    return DateTime(
+      scheduledDate!.year,
+      scheduledDate!.month,
+      scheduledDate!.day,
+      time.hour,
+      time.minute,
+    );
+  }
 
   Ride copyWith({
     String? id,
@@ -54,6 +99,7 @@ class Ride {
     String? riderId,
     String? assignedDriver,
     int? riderRating,
+    DateTime? scheduledDateTime,
     DateTime? scheduledDate,
     TimeOfDay? scheduledTime,
   }) {
@@ -71,6 +117,7 @@ class Ride {
       riderId: riderId ?? this.riderId,
       assignedDriver: assignedDriver ?? this.assignedDriver,
       riderRating: riderRating ?? this.riderRating,
+      scheduledDateTime: scheduledDateTime ?? this.scheduledDateTime,
       scheduledDate: scheduledDate ?? this.scheduledDate,
       scheduledTime: scheduledTime ?? this.scheduledTime,
     );

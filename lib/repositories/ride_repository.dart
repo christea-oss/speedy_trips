@@ -315,6 +315,7 @@ class RideRepository {
 
     final updatedRide = _rides[index].copyWith(
       status: RideStatus.accepted,
+      assignedDriver: _rides[index].assignedDriver ?? 'local-driver',
       updatedAt: DateTime.now(),
     );
     _rides[index] = updatedRide;
@@ -327,6 +328,106 @@ class RideRepository {
       rideId: rideId,
       status: RideStatus.cancelled,
     );
+  }
+
+  Future<Ride> cancelScheduledRide(String rideId) async {
+    if (FirebaseBootstrap.isEnabled) {
+      try {
+        final ride = await _firestore.cancelScheduledRide(rideId);
+        _upsertLocalRide(ride);
+        _notifyLocalRides();
+        return ride;
+      } catch (error) {
+        if (!kIsWeb) {
+          rethrow;
+        }
+
+        FirebaseBootstrap.disable(error);
+      }
+    }
+
+    final index = _rides.indexWhere((ride) => ride.id == rideId);
+
+    if (index == -1) {
+      throw ArgumentError.value(rideId, 'rideId', 'Ride not found');
+    }
+
+    final ride = _rides[index];
+    if (!ride.isScheduled) {
+      throw StateError('Only scheduled rides can be cancelled here.');
+    }
+
+    if (ride.status != RideStatus.pending || ride.assignedDriver != null) {
+      throw StateError('Scheduled rides can only be cancelled before accepted.');
+    }
+
+    final updatedRide = ride.copyWith(
+      status: RideStatus.cancelled,
+      updatedAt: DateTime.now(),
+    );
+    _rides[index] = updatedRide;
+    _notifyLocalRides();
+    return updatedRide;
+  }
+
+  Future<Ride> updateScheduledRideDateTime({
+    required String rideId,
+    required DateTime scheduledDate,
+    required TimeOfDay scheduledTime,
+  }) async {
+    if (FirebaseBootstrap.isEnabled) {
+      try {
+        final ride = await _firestore.updateScheduledRideDateTime(
+          rideId: rideId,
+          scheduledDate: scheduledDate,
+          scheduledTime: scheduledTime,
+        );
+        _upsertLocalRide(ride);
+        _notifyLocalRides();
+        return ride;
+      } catch (error) {
+        if (!kIsWeb) {
+          rethrow;
+        }
+
+        FirebaseBootstrap.disable(error);
+      }
+    }
+
+    final index = _rides.indexWhere((ride) => ride.id == rideId);
+
+    if (index == -1) {
+      throw ArgumentError.value(rideId, 'rideId', 'Ride not found');
+    }
+
+    final ride = _rides[index];
+    if (!ride.isScheduled) {
+      throw StateError('Only scheduled rides can be edited.');
+    }
+
+    if (ride.status != RideStatus.pending || ride.assignedDriver != null) {
+      throw StateError('Scheduled rides can only be edited before accepted.');
+    }
+
+    final scheduledDateTime = _combineScheduledDateTime(
+      scheduledDate,
+      scheduledTime,
+    );
+    final updatedRide = ride.copyWith(
+      rideType: 'scheduled',
+      scheduledDateTime: scheduledDateTime,
+      scheduledDate: DateTime(
+        scheduledDate.year,
+        scheduledDate.month,
+        scheduledDate.day,
+      ),
+      scheduledTime: scheduledTime,
+      updatedAt: DateTime.now(),
+    );
+
+    _rides[index] = updatedRide;
+    _notifyLocalRides();
+    return updatedRide;
   }
 
   Future<Ride> rateRide({
@@ -418,6 +519,10 @@ class RideRepository {
     DateTime? scheduledDate,
     TimeOfDay? scheduledTime,
   }) {
+    final scheduledDateTime = _combineScheduledDateTime(
+      scheduledDate,
+      scheduledTime,
+    );
     final ride = Ride(
       id: DateTime.now().microsecondsSinceEpoch.toString(),
       pickupLocation: pickupLocation,
@@ -428,6 +533,7 @@ class RideRepository {
       fare: fare,
       status: RideStatus.pending,
       createdAt: DateTime.now(),
+      scheduledDateTime: scheduledDateTime,
       scheduledDate: scheduledDate,
       scheduledTime: scheduledTime,
     );
@@ -435,6 +541,23 @@ class RideRepository {
     _rides.add(ride);
     _notifyLocalRides();
     return ride;
+  }
+
+  DateTime? _combineScheduledDateTime(
+    DateTime? scheduledDate,
+    TimeOfDay? scheduledTime,
+  ) {
+    if (scheduledDate == null || scheduledTime == null) {
+      return null;
+    }
+
+    return DateTime(
+      scheduledDate.year,
+      scheduledDate.month,
+      scheduledDate.day,
+      scheduledTime.hour,
+      scheduledTime.minute,
+    );
   }
 
   void _upsertLocalRide(Ride ride) {

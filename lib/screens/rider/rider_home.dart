@@ -16,13 +16,11 @@ class RiderHome extends StatefulWidget {
 }
 
 class _RiderHomeState extends State<RiderHome> {
-  static const String defaultPickupLocation =
+  static const String airportLocation =
       'BHM Airport - Door 4L or DL-Door 4L';
   static const String statewideZone = 'Zone 8 - Alabama Statewide';
 
-  final TextEditingController pickupController = TextEditingController(
-    text: defaultPickupLocation,
-  );
+  final TextEditingController pickupController = TextEditingController();
   final TextEditingController dropoffController = TextEditingController();
 
   final Map<String, int> zonePricing = PricingEngine.zoneBaseFares;
@@ -82,17 +80,12 @@ class _RiderHomeState extends State<RiderHome> {
     'Orange Beach': 'Zone 8 - Alabama Statewide',
   };
 
-  final List<String> savedLocations = [
-    'Downtown',
-    'Homewood',
-    'Hoover',
-    'Tuscaloosa',
-    'Montgomery',
-    'Huntsville',
-    'Auburn',
-    'Mobile',
-    'Gulf Shores',
-  ];
+  final Map<String, String> savedPlaces = {
+    'Home': 'Home',
+    'Work': 'Work',
+    'Hotel': 'Hotel',
+    'Airport': airportLocation,
+  };
 
   String? selectedZone;
   String vehicleType = 'black_suv';
@@ -104,7 +97,11 @@ class _RiderHomeState extends State<RiderHome> {
 
   bool get isScheduled => scheduleType == 'scheduled';
 
-  String get currentRideType => isScheduled ? 'Scheduled Ride' : 'Ride Now';
+  String get currentRideType => isScheduled ? 'scheduled' : 'now';
+
+  String get currentRideTypeLabel {
+    return isScheduled ? 'Scheduled Ride' : 'Ride Now';
+  }
 
   FareEstimate get currentFareEstimate {
     return PricingEngine.estimate(
@@ -159,7 +156,11 @@ class _RiderHomeState extends State<RiderHome> {
 
   String get currentPickupLocation {
     final pickup = customPickup ?? pickupController.text.trim();
-    return pickup.isEmpty ? defaultPickupLocation : pickup;
+    return pickup;
+  }
+
+  String get currentDropoffLocation {
+    return customDropoff ?? dropoffController.text.trim();
   }
 
   String serviceAreaName(String zone) {
@@ -197,7 +198,7 @@ class _RiderHomeState extends State<RiderHome> {
     final cleanPickup = pickup.trim();
     final cleanDropoff = dropoff.trim();
 
-    if (cleanPickup.isEmpty && cleanDropoff.isEmpty) {
+    if (cleanPickup.isEmpty || cleanDropoff.isEmpty) {
       return null;
     }
 
@@ -232,7 +233,7 @@ class _RiderHomeState extends State<RiderHome> {
   void updateTripZone() {
     final matchedZone = zoneForTrip(
       pickup: currentPickupLocation,
-      dropoff: dropoffController.text,
+      dropoff: currentDropoffLocation,
     );
 
     selectedZone = matchedZone;
@@ -266,7 +267,15 @@ class _RiderHomeState extends State<RiderHome> {
     }
   }
 
-  void handleSavedSelect(String location) {
+  void handleSavedPickupSelect(String location) {
+    setState(() {
+      pickupController.text = location;
+      customPickup = location;
+      updateTripZone();
+    });
+  }
+
+  void handleSavedDropoffSelect(String location) {
     setState(() {
       dropoffController.text = location;
       customDropoff = location;
@@ -305,7 +314,29 @@ class _RiderHomeState extends State<RiderHome> {
   }
 
   Future<void> handleConfirmRide() async {
-    if (selectedZone == null) return;
+    final pickupLocation = currentPickupLocation;
+    final dropoffLocation = currentDropoffLocation;
+
+    if (pickupLocation.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter a pickup location')),
+      );
+      return;
+    }
+
+    if (dropoffLocation.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter a dropoff location')),
+      );
+      return;
+    }
+
+    if (selectedZone == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please select a service area')),
+      );
+      return;
+    }
 
     if (isScheduled && selectedDate == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -321,7 +352,25 @@ class _RiderHomeState extends State<RiderHome> {
       return;
     }
 
+    if (isScheduled) {
+      final scheduledDateTime = DateTime(
+        selectedDate!.year,
+        selectedDate!.month,
+        selectedDate!.day,
+        selectedTime!.hour,
+        selectedTime!.minute,
+      );
+
+      if (!scheduledDateTime.isAfter(DateTime.now())) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Please choose a future ride time')),
+        );
+        return;
+      }
+    }
+
     final rideType = currentRideType;
+    final rideTypeLabel = currentRideTypeLabel;
     final fareEstimate = currentFareEstimate;
     final fareSummary = fareSummaryText(fareEstimate);
     var isBooking = false;
@@ -333,19 +382,19 @@ class _RiderHomeState extends State<RiderHome> {
           title: const Text('Confirm Your Ride'),
           content: Text(
             isScheduled
-                ? 'Pickup: $currentPickupLocation\n'
-                    'Dropoff: ${customDropoff ?? selectedServiceAreaName}\n'
+                ? 'Pickup: $pickupLocation\n'
+                    'Dropoff: $dropoffLocation\n'
                     'Service Area: $selectedServiceAreaName\n'
                     'Vehicle: ${vehicleType == "black_ride" ? "Black Ride" : "Black SUV"}\n'
-                    'Type: $rideType\n'
+                    'Type: $rideTypeLabel\n'
                     'Date: ${selectedDate!.month}/${selectedDate!.day}/${selectedDate!.year}\n'
                     'Time: ${selectedTime!.format(dialogContext)}\n'
                     '\n$fareSummary'
-                : 'Pickup: $currentPickupLocation\n'
-                    'Dropoff: ${customDropoff ?? selectedServiceAreaName}\n'
+                : 'Pickup: $pickupLocation\n'
+                    'Dropoff: $dropoffLocation\n'
                     'Service Area: $selectedServiceAreaName\n'
                     'Vehicle: ${vehicleType == "black_ride" ? "Black Ride" : "Black SUV"}\n'
-                    'Type: $rideType\n'
+                    'Type: $rideTypeLabel\n'
                     '\n$fareSummary',
           ),
           actions: [
@@ -363,9 +412,8 @@ class _RiderHomeState extends State<RiderHome> {
 
                       try {
                         final ride = await RideRepository.instance.createRide(
-                          pickupLocation: currentPickupLocation,
-                          dropoffLocation:
-                              customDropoff ?? selectedServiceAreaName,
+                          pickupLocation: pickupLocation,
+                          dropoffLocation: dropoffLocation,
                           zone: selectedZone!,
                           vehicleType: vehicleType == 'black_ride'
                               ? VehicleType.blackRide
@@ -394,7 +442,7 @@ class _RiderHomeState extends State<RiderHome> {
                           selectedZone = null;
                           customPickup = null;
                           customDropoff = null;
-                          pickupController.text = defaultPickupLocation;
+                          pickupController.clear();
                           dropoffController.clear();
                           vehicleType = 'black_suv';
                           scheduleType = 'now';
@@ -448,7 +496,9 @@ class _RiderHomeState extends State<RiderHome> {
     final serviceAreaText = selectedZone == null
         ? ''
         : '$selectedServiceAreaName Service Area';
-    final dropoffText = customDropoff ?? serviceAreaText;
+    final dropoffText = currentDropoffLocation;
+    final hasTripLocations =
+        currentPickupLocation.isNotEmpty && currentDropoffLocation.isNotEmpty;
 
     return Scaffold(
       backgroundColor: Colors.black,
@@ -471,7 +521,7 @@ class _RiderHomeState extends State<RiderHome> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Text(
-                'Saved Places',
+                'Pickup shortcuts',
                 style: TextStyle(
                   color: Colors.white,
                   fontSize: 18,
@@ -482,10 +532,10 @@ class _RiderHomeState extends State<RiderHome> {
               Wrap(
                 spacing: 8,
                 runSpacing: 8,
-                children: savedLocations.map((location) {
+                children: savedPlaces.entries.map((entry) {
                   return ActionChip(
-                    label: Text(location),
-                    onPressed: () => handleSavedSelect(location),
+                    label: Text(entry.key),
+                    onPressed: () => handleSavedPickupSelect(entry.value),
                   );
                 }).toList(),
               ),
@@ -525,7 +575,7 @@ class _RiderHomeState extends State<RiderHome> {
                 controller: pickupController,
                 onChanged: handlePickupChanged,
                 decoration: InputDecoration(
-                  hintText: defaultPickupLocation,
+                  hintText: 'Enter pickup address or place',
                   hintStyle: const TextStyle(color: Colors.white54),
                   filled: true,
                   fillColor: Colors.white10,
@@ -535,11 +585,13 @@ class _RiderHomeState extends State<RiderHome> {
                 ),
                 style: const TextStyle(color: Colors.white),
               ),
-              const SizedBox(height: 8),
-              Text(
-                'Pickup: $currentPickupLocation',
-                style: const TextStyle(color: Colors.white70),
-              ),
+              if (currentPickupLocation.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                Text(
+                  'Pickup: $currentPickupLocation',
+                  style: const TextStyle(color: Colors.white70),
+                ),
+              ],
               const SizedBox(height: 16),
               const Text(
                 'Where to?',
@@ -559,6 +611,22 @@ class _RiderHomeState extends State<RiderHome> {
                   ),
                 ),
                 style: const TextStyle(color: Colors.white),
+              ),
+              const SizedBox(height: 10),
+              const Text(
+                'Dropoff shortcuts',
+                style: TextStyle(color: Colors.white70),
+              ),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: savedPlaces.entries.map((entry) {
+                  return ActionChip(
+                    label: Text(entry.key),
+                    onPressed: () => handleSavedDropoffSelect(entry.value),
+                  );
+                }).toList(),
               ),
               const SizedBox(height: 10),
               DropdownButtonFormField<String>(
@@ -604,7 +672,7 @@ class _RiderHomeState extends State<RiderHome> {
                   style: const TextStyle(color: Colors.white70),
                 ),
               ],
-              if (selectedZone != null) ...[
+              if (hasTripLocations && selectedZone != null) ...[
                 const SizedBox(height: 8),
                 Text(
                   serviceAreaText,
@@ -680,7 +748,7 @@ class _RiderHomeState extends State<RiderHome> {
                   ),
                 ),
               ),
-              if (selectedZone != null) ...[
+              if (hasTripLocations && selectedZone != null) ...[
                 const SizedBox(height: 20),
                 const Text(
                   'Choose Your Ride',
@@ -856,16 +924,20 @@ class _RiderHomeState extends State<RiderHome> {
 
   String tripSummaryText(String serviceAreaText) {
     if (!isScheduled) {
-      return 'Ride Now Trip: $serviceAreaText - '
+      return 'Ride Now Trip: ${currentPickupLocation} to '
+          '${currentDropoffLocation} - $serviceAreaText - '
           '${PricingEngine.formatCurrency(currentFare)}';
     }
 
     if (selectedDate == null || selectedTime == null) {
-      return 'Scheduled Trip: $serviceAreaText - Select date and time - '
+      return 'Scheduled Trip: ${currentPickupLocation} to '
+          '${currentDropoffLocation} - $serviceAreaText - '
+          'Select date and time - '
           '${PricingEngine.formatCurrency(currentFare)}';
     }
 
-    return 'Scheduled Trip: $serviceAreaText - '
+    return 'Scheduled Trip: ${currentPickupLocation} to '
+        '${currentDropoffLocation} - $serviceAreaText - '
         '${selectedDate!.month}/${selectedDate!.day}/${selectedDate!.year} '
         'at ${selectedTime!.format(context)} - '
         '${PricingEngine.formatCurrency(currentFare)}';

@@ -15,6 +15,7 @@ class MyRides extends StatefulWidget {
 
 class _MyRidesState extends State<MyRides> {
   final Set<String> _ratingRideIds = <String>{};
+  final Set<String> _updatingScheduledRideIds = <String>{};
 
   void returnToBooking() {
     Navigator.of(context).pop();
@@ -80,8 +81,157 @@ class _MyRidesState extends State<MyRides> {
     }
   }
 
+  Future<void> handleEditScheduledRide(Ride ride) async {
+    if (!_canManageScheduledRide(ride)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Scheduled rides can only be edited before accepted.'),
+        ),
+      );
+      return;
+    }
+
+    final currentSchedule = ride.effectiveScheduledDateTime ?? DateTime.now();
+    final pickedDate = await showDatePicker(
+      context: context,
+      initialDate: currentSchedule.isAfter(DateTime.now())
+          ? currentSchedule
+          : DateTime.now(),
+      firstDate: DateTime.now(),
+      lastDate: DateTime(2100),
+    );
+
+    if (pickedDate == null || !mounted) {
+      return;
+    }
+
+    final pickedTime = await showTimePicker(
+      context: context,
+      initialTime: ride.scheduledTime ??
+          TimeOfDay(
+            hour: currentSchedule.hour,
+            minute: currentSchedule.minute,
+          ),
+    );
+
+    if (pickedTime == null || !mounted) {
+      return;
+    }
+
+    final scheduledDateTime = DateTime(
+      pickedDate.year,
+      pickedDate.month,
+      pickedDate.day,
+      pickedTime.hour,
+      pickedTime.minute,
+    );
+
+    if (!scheduledDateTime.isAfter(DateTime.now())) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please choose a future ride time.')),
+      );
+      return;
+    }
+
+    setState(() {
+      _updatingScheduledRideIds.add(ride.id);
+    });
+
+    try {
+      await RideRepository.instance.updateScheduledRideDateTime(
+        rideId: ride.id,
+        scheduledDate: pickedDate,
+        scheduledTime: pickedTime,
+      );
+
+      if (!mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Scheduled ride time updated.')),
+      );
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Scheduled ride was not updated: $error')),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _updatingScheduledRideIds.remove(ride.id);
+        });
+      }
+    }
+  }
+
+  Future<void> handleCancelScheduledRide(Ride ride) async {
+    if (!_canManageScheduledRide(ride)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Scheduled rides can only be cancelled before accepted.'),
+        ),
+      );
+      return;
+    }
+
+    setState(() {
+      _updatingScheduledRideIds.add(ride.id);
+    });
+
+    try {
+      await RideRepository.instance.cancelScheduledRide(ride.id);
+
+      if (!mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Scheduled ride cancelled.')),
+      );
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Scheduled ride was not cancelled: $error')),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _updatingScheduledRideIds.remove(ride.id);
+        });
+      }
+    }
+  }
+
   String formatDate(DateTime date) {
     return '${date.month}/${date.day}/${date.year}';
+  }
+
+  String formatDateTime(DateTime date) {
+    final hour = date.hour.toString().padLeft(2, '0');
+    final minute = date.minute.toString().padLeft(2, '0');
+    return '${date.month}/${date.day}/${date.year} $hour:$minute';
+  }
+
+  String scheduledLabel(Ride ride) {
+    final scheduledDateTime = ride.effectiveScheduledDateTime;
+    if (scheduledDateTime == null) {
+      return 'Not scheduled';
+    }
+
+    return formatDateTime(scheduledDateTime);
+  }
+
+  bool _canManageScheduledRide(Ride ride) {
+    return ride.isScheduled &&
+        ride.status == RideStatus.pending &&
+        ride.assignedDriver == null;
   }
 
   DateTime receiptDate(Ride ride) {
@@ -200,7 +350,7 @@ class _MyRidesState extends State<MyRides> {
             ),
           ),
           Text(
-            'Ride type: ${ride.rideType}',
+            'Ride type: ${ride.rideTypeLabel}',
             style: const TextStyle(
               color: Colors.white70,
             ),
@@ -224,6 +374,14 @@ class _MyRidesState extends State<MyRides> {
               color: Colors.white70,
             ),
           ),
+          if (ride.isScheduled)
+            Text(
+              'Scheduled time: ${scheduledLabel(ride)}',
+              style: const TextStyle(
+                color: Colors.amber,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
           const SizedBox(height: 12),
           _riderReceipt(ride),
           const SizedBox(height: 8),
@@ -247,9 +405,47 @@ class _MyRidesState extends State<MyRides> {
               ),
             ],
           ),
+          if (ride.isScheduled) ...[
+            const SizedBox(height: 10),
+            _scheduledRideActions(ride),
+          ],
           buildRatingStars(ride),
         ],
       ),
+    );
+  }
+
+  Widget _scheduledRideActions(Ride ride) {
+    final canManage = _canManageScheduledRide(ride);
+    final isUpdating = _updatingScheduledRideIds.contains(ride.id);
+
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: [
+        OutlinedButton.icon(
+          style: OutlinedButton.styleFrom(
+            foregroundColor: Colors.amber,
+            side: const BorderSide(color: Colors.amber),
+          ),
+          onPressed: canManage && !isUpdating
+              ? () => handleEditScheduledRide(ride)
+              : null,
+          icon: const Icon(Icons.edit_calendar),
+          label: const Text('Edit Time'),
+        ),
+        OutlinedButton.icon(
+          style: OutlinedButton.styleFrom(
+            foregroundColor: Colors.redAccent,
+            side: const BorderSide(color: Colors.redAccent),
+          ),
+          onPressed: canManage && !isUpdating
+              ? () => handleCancelScheduledRide(ride)
+              : null,
+          icon: const Icon(Icons.cancel),
+          label: const Text('Cancel Scheduled'),
+        ),
+      ],
     );
   }
 
@@ -288,7 +484,9 @@ class _MyRidesState extends State<MyRides> {
               _receiptDetail('Dropoff', ride.dropoffLocation),
               _receiptDetail('Driver', driverName),
               _receiptDetail('Ride date', formatDate(receiptDate(ride))),
-              _receiptDetail('Ride type', ride.rideType),
+              _receiptDetail('Ride type', ride.rideTypeLabel),
+              if (ride.isScheduled)
+                _receiptDetail('Scheduled time', scheduledLabel(ride)),
               _receiptDetail('Fare paid', ride.priceLabel),
               _receiptDetail('Ride status', ride.status.label),
             ],
