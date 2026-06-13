@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../models/vehicle_type.dart';
 import '../../repositories/ride_repository.dart';
+import '../../services/app_error_messages.dart';
 import '../../services/auth_service.dart';
 import '../../services/pricing_engine.dart';
 import '../auth/role_selection_screen.dart';
@@ -459,7 +460,7 @@ class _RiderHomeState extends State<RiderHome> {
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
                             content: Text(
-                              'Ride was not booked. ${error.toString()}',
+                              'Ride was not booked. ${friendlyErrorMessage(error)}',
                             ),
                           ),
                         );
@@ -520,6 +521,8 @@ class _RiderHomeState extends State<RiderHome> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              _profileCard(),
+              const SizedBox(height: 18),
               const Text(
                 'Pickup shortcuts',
                 style: TextStyle(
@@ -731,23 +734,6 @@ class _RiderHomeState extends State<RiderHome> {
                   ),
                 ),
               ],
-              const SizedBox(height: 20),
-              Container(
-                height: 160,
-                width: double.infinity,
-                decoration: BoxDecoration(
-                  color: Colors.white10,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.white24),
-                ),
-                child: const Center(
-                  child: Text(
-                    'Map Preview Placeholder\nBirmingham',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(color: Colors.white70),
-                  ),
-                ),
-              ),
               if (hasTripLocations && selectedZone != null) ...[
                 const SizedBox(height: 20),
                 const Text(
@@ -834,6 +820,62 @@ class _RiderHomeState extends State<RiderHome> {
                 fontWeight: FontWeight.bold,
               ),
             ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _profileCard() {
+    final user = AuthService.instance.currentUser;
+    final name = (user?.displayName?.trim().isNotEmpty ?? false)
+        ? user!.displayName!.trim()
+        : 'SpeedyTrips Rider';
+    final email = user?.email?.trim() ?? '';
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFF12100B),
+        border: Border.all(color: Colors.amber.withOpacity(0.42)),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Rider Profile',
+            style: TextStyle(
+              color: Colors.amber,
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 10),
+          _profileLine('Name', name),
+          _profileLine('Email', email),
+          _profileLine('Role', 'Rider'),
+        ],
+      ),
+    );
+  }
+
+  Widget _profileLine(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 5),
+      child: RichText(
+        text: TextSpan(
+          style: const TextStyle(color: Colors.white70, fontSize: 15),
+          children: [
+            TextSpan(
+              text: '$label: ',
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            TextSpan(text: value.isEmpty ? 'Not provided' : value),
           ],
         ),
       ),

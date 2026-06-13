@@ -6,8 +6,10 @@ import '../../models/ride_status.dart';
 import '../../models/user_role.dart';
 import '../../models/vehicle_type.dart';
 import '../../repositories/admin_repository.dart';
+import '../../services/app_error_messages.dart';
 import '../../services/auth_service.dart';
 import '../auth/role_selection_screen.dart';
+import '../shared/ride_detail_screen.dart';
 
 class AdminDashboard extends StatefulWidget {
   const AdminDashboard({super.key});
@@ -21,6 +23,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
   RideStatus? selectedStatus;
   RideStatus? selectedScheduledStatus;
   DateTime? selectedScheduledDate;
+  String? selectedRideType;
   String searchText = '';
 
   @override
@@ -61,11 +64,38 @@ class _AdminDashboardState extends State<AdminDashboard> {
         child: StreamBuilder<List<Ride>>(
           stream: AdminRepository.instance.watchAllRides(),
           builder: (context, ridesSnapshot) {
+            if (ridesSnapshot.hasError) {
+              return _streamMessageState(
+                icon: Icons.cloud_off,
+                message:
+                    'Admin rides could not load. ${friendlyErrorMessage(ridesSnapshot.error!)}',
+              );
+            }
+
+            if (ridesSnapshot.connectionState == ConnectionState.waiting &&
+                !ridesSnapshot.hasData) {
+              return _loadingState('Loading admin ride data...');
+            }
+
             final rides = ridesSnapshot.data ?? const <Ride>[];
 
             return StreamBuilder<List<AppUser>>(
               stream: AdminRepository.instance.watchDrivers(),
               builder: (context, driversSnapshot) {
+                if (driversSnapshot.hasError) {
+                  return _streamMessageState(
+                    icon: Icons.cloud_off,
+                    message:
+                        'Driver profiles could not load. ${friendlyErrorMessage(driversSnapshot.error!)}',
+                  );
+                }
+
+                if (driversSnapshot.connectionState ==
+                        ConnectionState.waiting &&
+                    !driversSnapshot.hasData) {
+                  return _loadingState('Loading driver profiles...');
+                }
+
                 final drivers = driversSnapshot.data ?? const <AppUser>[];
                 final filteredRides = _filteredRides(rides);
                 final scheduledRides = _filteredScheduledRides(rides);
@@ -79,6 +109,8 @@ class _AdminDashboardState extends State<AdminDashboard> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
+                          _adminHeader(),
+                          const SizedBox(height: 16),
                           _summaryGrid(rides, drivers),
                           const SizedBox(height: 16),
                           _filtersCard(),
@@ -227,6 +259,16 @@ class _AdminDashboardState extends State<AdminDashboard> {
               for (final status in RideStatus.values) _statusChip(status),
             ],
           ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: [
+              _rideTypeChip(null, 'All ride types'),
+              _rideTypeChip('now', 'Ride Now'),
+              _rideTypeChip('scheduled', 'Scheduled'),
+            ],
+          ),
         ],
       ),
     );
@@ -287,6 +329,13 @@ class _AdminDashboardState extends State<AdminDashboard> {
             'Revenue estimate is based on completed ride fares.',
             style: TextStyle(color: Colors.white70, fontSize: 14),
           ),
+          if (completedRides.isEmpty) ...[
+            const SizedBox(height: 10),
+            const Text(
+              'No completed ride revenue yet.',
+              style: TextStyle(color: Colors.white70, fontSize: 14),
+            ),
+          ],
           const SizedBox(height: 14),
           LayoutBuilder(
             builder: (context, constraints) {
@@ -526,6 +575,16 @@ class _AdminDashboardState extends State<AdminDashboard> {
           _detail('Fare', ride.priceLabel),
           _detail('Scheduled time', _scheduledDateLabel(ride)),
           _detail('Status', ride.status.label),
+          const SizedBox(height: 8),
+          OutlinedButton.icon(
+            style: OutlinedButton.styleFrom(
+              foregroundColor: Colors.amber,
+              side: const BorderSide(color: Colors.amber),
+            ),
+            onPressed: () => _openRideDetails(ride),
+            icon: const Icon(Icons.receipt_long),
+            label: const Text('View Details'),
+          ),
         ],
       ),
     );
@@ -636,6 +695,16 @@ class _AdminDashboardState extends State<AdminDashboard> {
             'Rider rating',
             ride.riderRating == null ? 'Not rated' : '${ride.riderRating}/5',
           ),
+          const SizedBox(height: 8),
+          OutlinedButton.icon(
+            style: OutlinedButton.styleFrom(
+              foregroundColor: Colors.amber,
+              side: const BorderSide(color: Colors.amber),
+            ),
+            onPressed: () => _openRideDetails(ride),
+            icon: const Icon(Icons.receipt_long),
+            label: const Text('View Details'),
+          ),
         ],
       ),
     );
@@ -677,6 +746,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
           _detail('Email', driver.email),
           _detail('Role', driver.role.label),
           _detail('UID', driver.uid),
+          _detail('Status', _driverStatusLabel(rides)),
           const SizedBox(height: 8),
           Wrap(
             spacing: 8,
@@ -748,6 +818,29 @@ class _AdminDashboardState extends State<AdminDashboard> {
       onSelected: (_) {
         setState(() {
           selectedStatus = status;
+        });
+      },
+    );
+  }
+
+  Widget _rideTypeChip(String? rideType, String label) {
+    final isSelected = selectedRideType == rideType;
+
+    return ChoiceChip(
+      selected: isSelected,
+      label: Text(label),
+      selectedColor: Colors.amber,
+      backgroundColor: Colors.black,
+      side: BorderSide(
+        color: isSelected ? Colors.amber : Colors.white24,
+      ),
+      labelStyle: TextStyle(
+        color: isSelected ? Colors.black : Colors.white,
+        fontWeight: FontWeight.bold,
+      ),
+      onSelected: (_) {
+        setState(() {
+          selectedRideType = rideType;
         });
       },
     );
@@ -872,6 +965,14 @@ class _AdminDashboardState extends State<AdminDashboard> {
         return false;
       }
 
+      if (selectedRideType == 'scheduled' && !ride.isScheduled) {
+        return false;
+      }
+
+      if (selectedRideType == 'now' && ride.isScheduled) {
+        return false;
+      }
+
       if (query.isEmpty) {
         return true;
       }
@@ -979,6 +1080,104 @@ class _AdminDashboardState extends State<AdminDashboard> {
     final average = ratings.reduce((total, rating) => total + rating) /
         ratings.length;
     return '${average.toStringAsFixed(1)}/5';
+  }
+
+  String _driverStatusLabel(List<Ride> rides) {
+    final hasActiveRide = rides.any((ride) =>
+        ride.status == RideStatus.accepted ||
+        ride.status == RideStatus.arriving ||
+        ride.status == RideStatus.inProgress);
+
+    if (hasActiveRide) {
+      return 'Busy';
+    }
+
+    return 'Available / offline';
+  }
+
+  Widget _adminHeader() {
+    final user = AuthService.instance.currentUser;
+    final name = (user?.displayName?.trim().isNotEmpty ?? false)
+        ? user!.displayName!.trim()
+        : 'SpeedyTrips Admin';
+    final email = user?.email?.trim() ?? '';
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: _panelDecoration(),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Admin Profile',
+            style: TextStyle(
+              color: Colors.amber,
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 10),
+          _detail('Name', name),
+          _detail('Email', email),
+          _detail('Role', 'Admin'),
+        ],
+      ),
+    );
+  }
+
+  void _openRideDetails(Ride ride) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => RideDetailScreen(
+          ride: ride,
+          title: 'Admin Ride Details',
+        ),
+      ),
+    );
+  }
+
+  Widget _loadingState(String message) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const CircularProgressIndicator(color: Colors.amber),
+            const SizedBox(height: 14),
+            Text(
+              message,
+              style: const TextStyle(color: Colors.white70),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _streamMessageState({
+    required IconData icon,
+    required String message,
+  }) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 56, color: Colors.white54),
+            const SizedBox(height: 14),
+            Text(
+              message,
+              style: const TextStyle(color: Colors.white70, fontSize: 16),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   int _sumFares(List<Ride> rides) {

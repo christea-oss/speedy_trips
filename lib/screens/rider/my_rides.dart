@@ -5,6 +5,8 @@ import '../../models/ride_status.dart';
 import '../../models/vehicle_type.dart';
 import '../../repositories/ride_repository.dart';
 import '../../repositories/user_profile_repository.dart';
+import '../../services/app_error_messages.dart';
+import '../shared/ride_detail_screen.dart';
 
 class MyRides extends StatefulWidget {
   const MyRides({super.key});
@@ -69,7 +71,7 @@ class _MyRidesState extends State<MyRides> {
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Rating was not saved: $error'),
+          content: Text('Rating was not saved. ${friendlyErrorMessage(error)}'),
         ),
       );
     } finally {
@@ -157,7 +159,11 @@ class _MyRidesState extends State<MyRides> {
       }
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Scheduled ride was not updated: $error')),
+        SnackBar(
+          content: Text(
+            'Scheduled ride was not updated. ${friendlyErrorMessage(error)}',
+          ),
+        ),
       );
     } finally {
       if (mounted) {
@@ -175,6 +181,31 @@ class _MyRidesState extends State<MyRides> {
           content: Text('Scheduled rides can only be cancelled before accepted.'),
         ),
       );
+      return;
+    }
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Cancel scheduled ride?'),
+        content: Text(
+          'This will cancel your scheduled ride to '
+          '${ride.dropoffLocation.isEmpty ? 'your destination' : ride.dropoffLocation}.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Keep Ride'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Cancel Ride'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !mounted) {
       return;
     }
 
@@ -198,7 +229,11 @@ class _MyRidesState extends State<MyRides> {
       }
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Scheduled ride was not cancelled: $error')),
+        SnackBar(
+          content: Text(
+            'Scheduled ride was not cancelled. ${friendlyErrorMessage(error)}',
+          ),
+        ),
       );
     } finally {
       if (mounted) {
@@ -385,6 +420,16 @@ class _MyRidesState extends State<MyRides> {
           const SizedBox(height: 12),
           _riderReceipt(ride),
           const SizedBox(height: 8),
+          OutlinedButton.icon(
+            style: OutlinedButton.styleFrom(
+              foregroundColor: Colors.amber,
+              side: const BorderSide(color: Colors.amber),
+            ),
+            onPressed: () => _openRideDetails(ride),
+            icon: const Icon(Icons.receipt_long),
+            label: const Text('View Details'),
+          ),
+          const SizedBox(height: 8),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -557,6 +602,14 @@ class _MyRidesState extends State<MyRides> {
               StreamBuilder<List<Ride>>(
                 stream: RideRepository.instance.watchRiderRides(),
                 builder: (context, snapshot) {
+                  if (snapshot.hasError) {
+                    return _messageState(
+                      icon: Icons.cloud_off,
+                      message:
+                          'Ride history could not load. ${friendlyErrorMessage(snapshot.error!)}',
+                    );
+                  }
+
                   if (snapshot.connectionState == ConnectionState.waiting &&
                       !snapshot.hasData) {
                     return SizedBox(
@@ -572,29 +625,9 @@ class _MyRidesState extends State<MyRides> {
                   final rides = snapshot.data ?? const <Ride>[];
 
                   if (rides.isEmpty) {
-                    return SizedBox(
-                      height: MediaQuery.sizeOf(context).height * 0.6,
-                      child: const Center(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              Icons.directions_car,
-                              size: 60,
-                              color: Colors.white54,
-                            ),
-                            SizedBox(height: 16),
-                            Text(
-                              'No rides yet.\nYour trips will appear here.',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                color: Colors.white70,
-                                fontSize: 16,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
+                    return _messageState(
+                      icon: Icons.directions_car,
+                      message: 'No rides yet.\nYour trips will appear here.',
                     );
                   }
 
@@ -624,6 +657,48 @@ class _MyRidesState extends State<MyRides> {
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  void _openRideDetails(Ride ride) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => RideDetailScreen(
+          ride: ride,
+          title: 'Rider Ride Details',
+        ),
+      ),
+    );
+  }
+
+  Widget _messageState({
+    required IconData icon,
+    required String message,
+  }) {
+    return SizedBox(
+      height: MediaQuery.sizeOf(context).height * 0.6,
+      child: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              icon,
+              size: 60,
+              color: Colors.white54,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                color: Colors.white70,
+                fontSize: 16,
+              ),
+            ),
+          ],
         ),
       ),
     );

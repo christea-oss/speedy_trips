@@ -4,8 +4,10 @@ import '../../models/ride.dart';
 import '../../models/ride_status.dart';
 import '../../repositories/ride_repository.dart';
 import '../../repositories/user_profile_repository.dart';
+import '../../services/app_error_messages.dart';
 import '../../services/auth_service.dart';
 import '../auth/role_selection_screen.dart';
+import '../shared/ride_detail_screen.dart';
 
 enum DriverAvailability {
   offline,
@@ -77,7 +79,9 @@ class _DriverHomeState extends State<DriverHome> {
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Ride update failed. ${error.toString()}')),
+        SnackBar(
+          content: Text('Ride update failed. ${friendlyErrorMessage(error)}'),
+        ),
       );
     }
   }
@@ -92,11 +96,17 @@ class _DriverHomeState extends State<DriverHome> {
         activeRide = acceptedRide;
         availability = DriverAvailability.busy;
       });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Ride accepted.')),
+      );
     } catch (error) {
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Ride accept failed. ${error.toString()}')),
+        SnackBar(
+          content: Text('Ride accept failed. ${friendlyErrorMessage(error)}'),
+        ),
       );
     }
   }
@@ -115,6 +125,12 @@ class _DriverHomeState extends State<DriverHome> {
 
   Future<void> completeTrip(Ride ride) async {
     await updateStatus(ride, RideStatus.completed);
+
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Trip completed.')),
+    );
   }
 
   void findNextRide() {
@@ -160,11 +176,38 @@ class _DriverHomeState extends State<DriverHome> {
         child: StreamBuilder<List<Ride>>(
           stream: RideRepository.instance.watchAssignedDriverRides(),
           builder: (context, assignedSnapshot) {
+            if (assignedSnapshot.hasError) {
+              return _streamMessageState(
+                icon: Icons.cloud_off,
+                message:
+                    'Driver rides could not load. ${friendlyErrorMessage(assignedSnapshot.error!)}',
+              );
+            }
+
+            if (assignedSnapshot.connectionState == ConnectionState.waiting &&
+                !assignedSnapshot.hasData) {
+              return _loadingState('Loading driver rides...');
+            }
+
             final assignedRides = assignedSnapshot.data ?? const <Ride>[];
 
             return StreamBuilder<List<Ride>>(
               stream: RideRepository.instance.watchPendingRides(),
               builder: (context, pendingSnapshot) {
+                if (pendingSnapshot.hasError) {
+                  return _streamMessageState(
+                    icon: Icons.cloud_off,
+                    message:
+                        'Ride requests could not load. ${friendlyErrorMessage(pendingSnapshot.error!)}',
+                  );
+                }
+
+                if (pendingSnapshot.connectionState ==
+                        ConnectionState.waiting &&
+                    !pendingSnapshot.hasData) {
+                  return _loadingState('Loading ride requests...');
+                }
+
                 final pendingRides = (pendingSnapshot.data ?? const <Ride>[])
                     .where((ride) => !declinedRideIds.contains(ride.id))
                     .toList();
@@ -275,6 +318,7 @@ class _DriverHomeState extends State<DriverHome> {
     final name = (user?.displayName?.trim().isNotEmpty ?? false)
         ? user!.displayName!.trim()
         : 'SpeedyTrips Driver';
+    final email = user?.email?.trim() ?? '';
 
     return Container(
       padding: const EdgeInsets.all(18),
@@ -299,6 +343,8 @@ class _DriverHomeState extends State<DriverHome> {
               fontWeight: FontWeight.bold,
             ),
           ),
+          const SizedBox(height: 12),
+          _rideDetail('Email', email),
           const SizedBox(height: 12),
           Wrap(
             spacing: 10,
@@ -464,6 +510,13 @@ class _DriverHomeState extends State<DriverHome> {
             'Completed trips update these totals automatically.',
             style: TextStyle(color: Colors.white70, fontSize: 14),
           ),
+          if (completedRides.isEmpty) ...[
+            const SizedBox(height: 10),
+            const Text(
+              'No earnings yet. Completed trips will appear here.',
+              style: TextStyle(color: Colors.white70, fontSize: 14),
+            ),
+          ],
           const SizedBox(height: 14),
           LayoutBuilder(
             builder: (context, constraints) {
@@ -753,6 +806,13 @@ class _DriverHomeState extends State<DriverHome> {
           if (ride.isScheduled)
             _rideDetail('Scheduled time', _scheduledDateLabel(ride)),
           _rideDetail('Fare', ride.priceLabel),
+          const SizedBox(height: 8),
+          OutlinedButton.icon(
+            style: _outlineButtonStyle(),
+            onPressed: () => _openRideDetails(ride),
+            icon: const Icon(Icons.receipt_long),
+            label: const Text('View Details'),
+          ),
           if (actions.isNotEmpty) ...[
             const SizedBox(height: 16),
             Column(
@@ -920,6 +980,61 @@ class _DriverHomeState extends State<DriverHome> {
       color: const Color(0xFF12100B),
       border: Border.all(color: Colors.amber.withOpacity(0.42)),
       borderRadius: BorderRadius.circular(12),
+    );
+  }
+
+  void _openRideDetails(Ride ride) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => RideDetailScreen(
+          ride: ride,
+          title: 'Driver Ride Details',
+        ),
+      ),
+    );
+  }
+
+  Widget _loadingState(String message) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const CircularProgressIndicator(color: Colors.amber),
+            const SizedBox(height: 14),
+            Text(
+              message,
+              style: const TextStyle(color: Colors.white70),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _streamMessageState({
+    required IconData icon,
+    required String message,
+  }) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 56, color: Colors.white54),
+            const SizedBox(height: 14),
+            Text(
+              message,
+              style: const TextStyle(color: Colors.white70, fontSize: 16),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
     );
   }
 
