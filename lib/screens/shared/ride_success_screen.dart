@@ -10,10 +10,7 @@ import '../rider/trip_complete.dart';
 class RideSuccessScreen extends StatelessWidget {
   final Ride ride;
 
-  const RideSuccessScreen({
-    super.key,
-    required this.ride,
-  });
+  const RideSuccessScreen({super.key, required this.ride});
 
   @override
   Widget build(BuildContext context) {

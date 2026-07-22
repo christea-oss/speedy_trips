@@ -1,5 +1,4 @@
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 
 import '../../models/auth_session.dart';
@@ -82,9 +81,7 @@ class _AuthLoadingScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return const Scaffold(
       backgroundColor: Colors.black,
-      body: Center(
-        child: CircularProgressIndicator(color: Colors.amber),
-      ),
+      body: Center(child: CircularProgressIndicator(color: Colors.amber)),
     );
   }
 }

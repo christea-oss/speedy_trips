@@ -27,9 +27,7 @@ class FirebaseBootstrap {
     }
 
     try {
-      await Firebase.initializeApp(
-        options: options,
-      );
+      await Firebase.initializeApp(options: options);
       if (kIsWeb) {
         await FirebaseAuth.instance.setPersistence(Persistence.LOCAL);
       }

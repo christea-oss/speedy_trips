@@ -111,19 +111,23 @@ class RideRepository {
     }
 
     yield getLocalRides()
-        .where((ride) =>
-            ride.status == RideStatus.accepted ||
-            ride.status == RideStatus.arriving ||
-            ride.status == RideStatus.inProgress ||
-            ride.status == RideStatus.completed)
-        .toList();
-    await for (final _ in _localRideChanges.stream) {
-      yield getLocalRides()
-          .where((ride) =>
+        .where(
+          (ride) =>
               ride.status == RideStatus.accepted ||
               ride.status == RideStatus.arriving ||
               ride.status == RideStatus.inProgress ||
-              ride.status == RideStatus.completed)
+              ride.status == RideStatus.completed,
+        )
+        .toList();
+    await for (final _ in _localRideChanges.stream) {
+      yield getLocalRides()
+          .where(
+            (ride) =>
+                ride.status == RideStatus.accepted ||
+                ride.status == RideStatus.arriving ||
+                ride.status == RideStatus.inProgress ||
+                ride.status == RideStatus.completed,
+          )
           .toList();
     }
   }
@@ -324,10 +328,7 @@ class RideRepository {
   }
 
   Future<Ride> cancelRide(String rideId) {
-    return updateRideStatus(
-      rideId: rideId,
-      status: RideStatus.cancelled,
-    );
+    return updateRideStatus(rideId: rideId, status: RideStatus.cancelled);
   }
 
   Future<Ride> cancelScheduledRide(String rideId) async {
@@ -358,7 +359,9 @@ class RideRepository {
     }
 
     if (ride.status != RideStatus.pending || ride.assignedDriver != null) {
-      throw StateError('Scheduled rides can only be cancelled before accepted.');
+      throw StateError(
+        'Scheduled rides can only be cancelled before accepted.',
+      );
     }
 
     final updatedRide = ride.copyWith(
@@ -430,20 +433,14 @@ class RideRepository {
     return updatedRide;
   }
 
-  Future<Ride> rateRide({
-    required String rideId,
-    required int rating,
-  }) async {
+  Future<Ride> rateRide({required String rideId, required int rating}) async {
     if (rating < 1 || rating > 5) {
       throw ArgumentError.value(rating, 'rating', 'Rating must be 1-5.');
     }
 
     if (FirebaseBootstrap.isEnabled) {
       try {
-        final ride = await _firestore.rateRide(
-          rideId: rideId,
-          rating: rating,
-        );
+        final ride = await _firestore.rateRide(rideId: rideId, rating: rating);
         _upsertLocalRide(ride);
         _notifyLocalRides();
         return ride;
@@ -478,10 +475,7 @@ class RideRepository {
 
   Future<Ride> updateStatus(Ride ride, RideStatus status) async {
     try {
-      return await updateRideStatus(
-        rideId: ride.id,
-        status: status,
-      );
+      return await updateRideStatus(rideId: ride.id, status: status);
     } on ArgumentError {
       final updatedRide = ride.copyWith(
         status: status,

@@ -37,7 +37,9 @@ class RideDetailScreen extends StatelessWidget {
                 padding: const EdgeInsets.all(18),
                 decoration: BoxDecoration(
                   color: const Color(0xFF12100B),
-                  border: Border.all(color: Colors.amber.withOpacity(0.42)),
+                  border: Border.all(
+                    color: Colors.amber.withAlpha((0.42 * 255).round()),
+                  ),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Column(
@@ -125,8 +127,10 @@ class RideDetailScreen extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: _statusColor(status).withOpacity(0.14),
-        border: Border.all(color: _statusColor(status).withOpacity(0.55)),
+        color: _statusColor(status).withAlpha((0.14 * 255).round()),
+        border: Border.all(
+          color: _statusColor(status).withAlpha((0.55 * 255).round()),
+        ),
         borderRadius: BorderRadius.circular(999),
       ),
       child: Text(

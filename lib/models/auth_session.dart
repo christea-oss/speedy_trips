@@ -6,8 +6,5 @@ class AuthSession {
   final User user;
   final UserRole role;
 
-  const AuthSession({
-    required this.user,
-    required this.role,
-  });
+  const AuthSession({required this.user, required this.role});
 }

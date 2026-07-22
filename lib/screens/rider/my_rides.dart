@@ -38,9 +38,7 @@ class _MyRidesState extends State<MyRides> {
   Future<void> handleRating(Ride ride, int rating) async {
     if (ride.status != RideStatus.completed) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Only completed rides can be rated.'),
-        ),
+        const SnackBar(content: Text('Only completed rides can be rated.')),
       );
       return;
     }
@@ -50,19 +48,14 @@ class _MyRidesState extends State<MyRides> {
     });
 
     try {
-      await RideRepository.instance.rateRide(
-        rideId: ride.id,
-        rating: rating,
-      );
+      await RideRepository.instance.rateRide(rideId: ride.id, rating: rating);
 
       if (!mounted) {
         return;
       }
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Saved $rating-star driver rating.'),
-        ),
+        SnackBar(content: Text('Saved $rating-star driver rating.')),
       );
     } catch (error) {
       if (!mounted) {
@@ -109,11 +102,9 @@ class _MyRidesState extends State<MyRides> {
 
     final pickedTime = await showTimePicker(
       context: context,
-      initialTime: ride.scheduledTime ??
-          TimeOfDay(
-            hour: currentSchedule.hour,
-            minute: currentSchedule.minute,
-          ),
+      initialTime:
+          ride.scheduledTime ??
+          TimeOfDay(hour: currentSchedule.hour, minute: currentSchedule.minute),
     );
 
     if (pickedTime == null || !mounted) {
@@ -178,7 +169,9 @@ class _MyRidesState extends State<MyRides> {
     if (!_canManageScheduledRide(ride)) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Scheduled rides can only be cancelled before accepted.'),
+          content: Text(
+            'Scheduled rides can only be cancelled before accepted.',
+          ),
         ),
       );
       return;
@@ -320,10 +313,7 @@ class _MyRidesState extends State<MyRides> {
 
             return IconButton(
               tooltip: '$rating star rating',
-              constraints: const BoxConstraints(
-                minWidth: 40,
-                minHeight: 40,
-              ),
+              constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
               padding: EdgeInsets.zero,
               onPressed: isSaving ? null : () => handleRating(ride, rating),
               icon: Icon(
@@ -339,10 +329,7 @@ class _MyRidesState extends State<MyRides> {
             padding: EdgeInsets.only(top: 4),
             child: Text(
               'Saving rating...',
-              style: TextStyle(
-                color: Colors.white54,
-                fontSize: 12,
-              ),
+              style: TextStyle(color: Colors.white54, fontSize: 12),
             ),
           ),
       ],
@@ -356,9 +343,7 @@ class _MyRidesState extends State<MyRides> {
       decoration: BoxDecoration(
         color: Colors.white10,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: Colors.white24,
-        ),
+        border: Border.all(color: Colors.white24),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -374,27 +359,19 @@ class _MyRidesState extends State<MyRides> {
           const SizedBox(height: 8),
           Text(
             'Pickup: ${ride.pickupLocation}',
-            style: const TextStyle(
-              color: Colors.white70,
-            ),
+            style: const TextStyle(color: Colors.white70),
           ),
           Text(
             'Vehicle: ${ride.vehicleType.label}',
-            style: const TextStyle(
-              color: Colors.white70,
-            ),
+            style: const TextStyle(color: Colors.white70),
           ),
           Text(
             'Ride type: ${ride.rideTypeLabel}',
-            style: const TextStyle(
-              color: Colors.white70,
-            ),
+            style: const TextStyle(color: Colors.white70),
           ),
           Text(
             'Zone: ${ride.zone}',
-            style: const TextStyle(
-              color: Colors.white70,
-            ),
+            style: const TextStyle(color: Colors.white70),
           ),
           Text(
             'Fare: ${ride.priceLabel}',
@@ -405,9 +382,7 @@ class _MyRidesState extends State<MyRides> {
           ),
           Text(
             'Date: ${formatDate(ride.createdAt)}',
-            style: const TextStyle(
-              color: Colors.white70,
-            ),
+            style: const TextStyle(color: Colors.white70),
           ),
           if (ride.isScheduled)
             Text(
@@ -501,7 +476,8 @@ class _MyRidesState extends State<MyRides> {
         fallback: 'Not assigned',
       ),
       builder: (context, snapshot) {
-        final driverName = snapshot.data ??
+        final driverName =
+            snapshot.data ??
             (ride.assignedDriver == null ? 'Not assigned' : 'Loading...');
 
         return Container(
@@ -615,9 +591,7 @@ class _MyRidesState extends State<MyRides> {
                     return SizedBox(
                       height: MediaQuery.sizeOf(context).height * 0.6,
                       child: const Center(
-                        child: CircularProgressIndicator(
-                          color: Colors.amber,
-                        ),
+                        child: CircularProgressIndicator(color: Colors.amber),
                       ),
                     );
                   }
@@ -638,10 +612,7 @@ class _MyRidesState extends State<MyRides> {
                         padding: EdgeInsets.only(bottom: 16),
                         child: Text(
                           'Your rides',
-                          style: TextStyle(
-                            color: Colors.white70,
-                            fontSize: 14,
-                          ),
+                          style: TextStyle(color: Colors.white70, fontSize: 14),
                         ),
                       ),
                       ListView.builder(
@@ -666,37 +637,25 @@ class _MyRidesState extends State<MyRides> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => RideDetailScreen(
-          ride: ride,
-          title: 'Rider Ride Details',
-        ),
+        builder: (context) =>
+            RideDetailScreen(ride: ride, title: 'Rider Ride Details'),
       ),
     );
   }
 
-  Widget _messageState({
-    required IconData icon,
-    required String message,
-  }) {
+  Widget _messageState({required IconData icon, required String message}) {
     return SizedBox(
       height: MediaQuery.sizeOf(context).height * 0.6,
       child: Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              icon,
-              size: 60,
-              color: Colors.white54,
-            ),
+            Icon(icon, size: 60, color: Colors.white54),
             const SizedBox(height: 16),
             Text(
               message,
               textAlign: TextAlign.center,
-              style: const TextStyle(
-                color: Colors.white70,
-                fontSize: 16,
-              ),
+              style: const TextStyle(color: Colors.white70, fontSize: 16),
             ),
           ],
         ),

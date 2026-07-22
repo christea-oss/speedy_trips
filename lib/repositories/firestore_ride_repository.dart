@@ -7,9 +7,8 @@ import '../models/vehicle_type.dart';
 import '../services/auth_service.dart';
 
 class FirestoreRideRepository {
-  FirestoreRideRepository({
-    FirebaseFirestore? firestore,
-  }) : _firestore = firestore ?? FirebaseFirestore.instance;
+  FirestoreRideRepository({FirebaseFirestore? firestore})
+    : _firestore = firestore ?? FirebaseFirestore.instance;
 
   final FirebaseFirestore _firestore;
 
@@ -34,8 +33,11 @@ class FirestoreRideRepository {
     return _rides
         .where('riderId', isEqualTo: riderId)
         .snapshots()
-        .map((snapshot) => snapshot.docs.map(_rideFromSnapshot).toList()
-          ..sort((a, b) => b.createdAt.compareTo(a.createdAt)));
+        .map(
+          (snapshot) =>
+              snapshot.docs.map(_rideFromSnapshot).toList()
+                ..sort((a, b) => b.createdAt.compareTo(a.createdAt)),
+        );
   }
 
   Stream<List<Ride>> watchRequestedRides() {
@@ -46,8 +48,11 @@ class FirestoreRideRepository {
     return _rides
         .where('status', isEqualTo: RideStatus.pending.id)
         .snapshots()
-        .map((snapshot) => snapshot.docs.map(_rideFromSnapshot).toList()
-          ..sort((a, b) => b.createdAt.compareTo(a.createdAt)));
+        .map(
+          (snapshot) =>
+              snapshot.docs.map(_rideFromSnapshot).toList()
+                ..sort((a, b) => b.createdAt.compareTo(a.createdAt)),
+        );
   }
 
   Stream<List<Ride>> watchAssignedDriverRides() {
@@ -60,8 +65,11 @@ class FirestoreRideRepository {
     return _rides
         .where('assignedDriver', isEqualTo: driverId)
         .snapshots()
-        .map((snapshot) => snapshot.docs.map(_rideFromSnapshot).toList()
-          ..sort((a, b) => b.createdAt.compareTo(a.createdAt)));
+        .map(
+          (snapshot) =>
+              snapshot.docs.map(_rideFromSnapshot).toList()
+                ..sort((a, b) => b.createdAt.compareTo(a.createdAt)),
+        );
   }
 
   Stream<Ride?> watchRide(String rideId) {
@@ -129,10 +137,7 @@ class FirestoreRideRepository {
       scheduledDate: scheduledDate,
       scheduledTime: scheduledTime,
     );
-    final rideData = _rideToFirestore(
-      ride,
-      riderId: riderId,
-    );
+    final rideData = _rideToFirestore(ride, riderId: riderId);
 
     debugPrint(
       'FirestoreRideRepository.createRide writing ride data: $rideData',
@@ -200,10 +205,7 @@ class FirestoreRideRepository {
   }
 
   Future<Ride> cancelRide(String rideId) {
-    return updateRideStatus(
-      rideId: rideId,
-      status: RideStatus.cancelled,
-    );
+    return updateRideStatus(rideId: rideId, status: RideStatus.cancelled);
   }
 
   Future<Ride> cancelScheduledRide(String rideId) async {
@@ -224,9 +226,11 @@ class FirestoreRideRepository {
       final status = rideStatusFromId(
         data['status'] as String? ?? RideStatus.pending.id,
       );
-      final rideRiderId = _stringFromFirestore(data['riderId']) ??
+      final rideRiderId =
+          _stringFromFirestore(data['riderId']) ??
           _stringFromFirestore(data['riderUid']);
-      final assignedDriver = _stringFromFirestore(data['assignedDriver']) ??
+      final assignedDriver =
+          _stringFromFirestore(data['assignedDriver']) ??
           _stringFromFirestore(data['driverId']);
 
       if (rideRiderId != null && rideRiderId != riderId) {
@@ -283,9 +287,11 @@ class FirestoreRideRepository {
       final status = rideStatusFromId(
         data['status'] as String? ?? RideStatus.pending.id,
       );
-      final rideRiderId = _stringFromFirestore(data['riderId']) ??
+      final rideRiderId =
+          _stringFromFirestore(data['riderId']) ??
           _stringFromFirestore(data['riderUid']);
-      final assignedDriver = _stringFromFirestore(data['assignedDriver']) ??
+      final assignedDriver =
+          _stringFromFirestore(data['assignedDriver']) ??
           _stringFromFirestore(data['driverId']);
 
       if (rideRiderId != null && rideRiderId != riderId) {
@@ -305,11 +311,7 @@ class FirestoreRideRepository {
         'scheduledDateTime': Timestamp.fromDate(scheduledDateTime),
         'ScheduledDateTime': Timestamp.fromDate(scheduledDateTime),
         'scheduledDate': Timestamp.fromDate(
-          DateTime(
-            scheduledDate.year,
-            scheduledDate.month,
-            scheduledDate.day,
-          ),
+          DateTime(scheduledDate.year, scheduledDate.month, scheduledDate.day),
         ),
         'scheduledTime': {
           'hour': scheduledTime.hour,
@@ -323,10 +325,7 @@ class FirestoreRideRepository {
     return _rideFromSnapshot(snapshot);
   }
 
-  Future<Ride> rateRide({
-    required String rideId,
-    required int rating,
-  }) async {
+  Future<Ride> rateRide({required String rideId, required int rating}) async {
     if (rating < 1 || rating > 5) {
       throw ArgumentError.value(rating, 'rating', 'Rating must be 1-5.');
     }
@@ -348,7 +347,8 @@ class FirestoreRideRepository {
       final status = rideStatusFromId(
         data['status'] as String? ?? RideStatus.pending.id,
       );
-      final rideRiderId = _stringFromFirestore(data['riderId']) ??
+      final rideRiderId =
+          _stringFromFirestore(data['riderId']) ??
           _stringFromFirestore(data['riderUid']);
 
       if (status != RideStatus.completed) {
@@ -399,22 +399,22 @@ class FirestoreRideRepository {
       ),
       createdAt: _dateTimeFromFirestore(data['createdAt']) ?? DateTime.now(),
       updatedAt: _dateTimeFromFirestore(data['updatedAt']),
-      riderId: _stringFromFirestore(data['riderId']) ??
+      riderId:
+          _stringFromFirestore(data['riderId']) ??
           _stringFromFirestore(data['riderUid']),
-      assignedDriver: _stringFromFirestore(data['assignedDriver']) ??
+      assignedDriver:
+          _stringFromFirestore(data['assignedDriver']) ??
           _stringFromFirestore(data['driverId']),
       riderRating: (data['riderRating'] as num?)?.toInt(),
-      scheduledDateTime: scheduledDateTime ??
+      scheduledDateTime:
+          scheduledDateTime ??
           _combineScheduledDateTime(scheduledDate, parsedScheduledTime),
       scheduledDate: scheduledDate,
       scheduledTime: parsedScheduledTime,
     );
   }
 
-  Map<String, dynamic> _rideToFirestore(
-    Ride ride, {
-    required String riderId,
-  }) {
+  Map<String, dynamic> _rideToFirestore(Ride ride, {required String riderId}) {
     final scheduledDateTime = ride.effectiveScheduledDateTime;
 
     return {

@@ -9,10 +9,7 @@ import 'rider_signup_screen.dart';
 class RoleSelectionScreen extends StatefulWidget {
   final String? message;
 
-  const RoleSelectionScreen({
-    super.key,
-    this.message,
-  });
+  const RoleSelectionScreen({super.key, this.message});
 
   @override
   State<RoleSelectionScreen> createState() => _RoleSelectionScreenState();
@@ -44,10 +41,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen>
   }
 
   void open(BuildContext context, Widget screen) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => screen),
-    );
+    Navigator.push(context, MaterialPageRoute(builder: (context) => screen));
   }
 
   @override
@@ -80,7 +74,8 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen>
                         icon: Icons.person_pin_circle,
                         primaryLabel: 'Rider Login',
                         secondaryLabel: 'Create Rider Account',
-                        onPrimary: () => open(context, const RiderLoginScreen()),
+                        onPrimary: () =>
+                            open(context, const RiderLoginScreen()),
                         onSecondary: () =>
                             open(context, const RiderSignupScreen()),
                       ),
@@ -91,7 +86,8 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen>
                         icon: Icons.local_taxi,
                         primaryLabel: 'Driver Login',
                         secondaryLabel: 'Create Driver Account',
-                        onPrimary: () => open(context, const DriverLoginScreen()),
+                        onPrimary: () =>
+                            open(context, const DriverLoginScreen()),
                         onSecondary: () =>
                             open(context, const DriverSignupScreen()),
                       ),
@@ -101,7 +97,8 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen>
                             'Review rides, drivers, statuses, and operations.',
                         icon: Icons.admin_panel_settings,
                         primaryLabel: 'Admin Login',
-                        onPrimary: () => open(context, const AdminLoginScreen()),
+                        onPrimary: () =>
+                            open(context, const AdminLoginScreen()),
                       ),
                     ];
 
@@ -130,10 +127,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen>
                         const Text(
                           'Choose your account type to continue.',
                           textAlign: TextAlign.center,
-                          style: TextStyle(
-                            color: Colors.white70,
-                            fontSize: 16,
-                          ),
+                          style: TextStyle(color: Colors.white70, fontSize: 16),
                         ),
                         if (widget.message != null) ...[
                           const SizedBox(height: 16),
@@ -204,15 +198,15 @@ class _RoleCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: const Color(0xFF12100B),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.amber.withOpacity(.55)),
+        border: Border.all(color: Colors.amber.withAlpha((.55 * 255).round())),
         boxShadow: [
           BoxShadow(
-            color: Colors.amber.withOpacity(.18),
+            color: Colors.amber.withAlpha((.18 * 255).round()),
             blurRadius: 26,
             offset: const Offset(0, 14),
           ),
           BoxShadow(
-            color: Colors.black.withOpacity(.55),
+            color: Colors.black.withAlpha((.55 * 255).round()),
             blurRadius: 28,
             offset: const Offset(0, 18),
           ),
@@ -227,9 +221,11 @@ class _RoleCard extends StatelessWidget {
                 height: 54,
                 width: 54,
                 decoration: BoxDecoration(
-                  color: Colors.amber.withOpacity(.14),
+                  color: Colors.amber.withAlpha((.14 * 255).round()),
                   borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: Colors.amber.withOpacity(.4)),
+                  border: Border.all(
+                    color: Colors.amber.withAlpha((.4 * 255).round()),
+                  ),
                 ),
                 child: Icon(icon, color: Colors.amber, size: 30),
               ),
@@ -265,7 +261,7 @@ class _RoleCard extends StatelessWidget {
               backgroundColor: Colors.amber,
               foregroundColor: Colors.black,
               elevation: 10,
-              shadowColor: Colors.amber.withOpacity(.35),
+              shadowColor: Colors.amber.withAlpha((.35 * 255).round()),
               padding: const EdgeInsets.symmetric(vertical: 15),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(10),
@@ -282,7 +278,9 @@ class _RoleCard extends StatelessWidget {
             OutlinedButton(
               style: OutlinedButton.styleFrom(
                 foregroundColor: Colors.white,
-                side: BorderSide(color: Colors.amber.withOpacity(.7)),
+                side: BorderSide(
+                  color: Colors.amber.withAlpha((.7 * 255).round()),
+                ),
                 padding: const EdgeInsets.symmetric(vertical: 14),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(10),

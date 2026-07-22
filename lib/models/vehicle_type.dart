@@ -1,7 +1,4 @@
-enum VehicleType {
-  blackRide,
-  blackSuv,
-}
+enum VehicleType { blackRide, blackSuv }
 
 extension VehicleTypeLabel on VehicleType {
   String get id {

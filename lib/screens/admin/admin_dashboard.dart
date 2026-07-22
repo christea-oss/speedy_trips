@@ -145,10 +145,12 @@ class _AdminDashboardState extends State<AdminDashboard> {
         .where((ride) => ride.status == RideStatus.pending)
         .length;
     final active = rides
-        .where((ride) =>
-            ride.status == RideStatus.accepted ||
-            ride.status == RideStatus.arriving ||
-            ride.status == RideStatus.inProgress)
+        .where(
+          (ride) =>
+              ride.status == RideStatus.accepted ||
+              ride.status == RideStatus.arriving ||
+              ride.status == RideStatus.inProgress,
+        )
         .length;
     final completedRevenue = _sumFares(
       rides.where((ride) => ride.status == RideStatus.completed).toList(),
@@ -542,7 +544,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: Colors.black,
-        border: Border.all(color: Colors.amber.withOpacity(0.38)),
+        border: Border.all(color: Colors.amber.withAlpha((0.38 * 255).round())),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
@@ -655,7 +657,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: Colors.black,
-        border: Border.all(color: Colors.amber.withOpacity(0.38)),
+        border: Border.all(color: Colors.amber.withAlpha((0.38 * 255).round())),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
@@ -716,10 +718,12 @@ class _AdminDashboardState extends State<AdminDashboard> {
         .toList();
     final driverEarnings = _sumFares(completed);
     final active = rides
-        .where((ride) =>
-            ride.status == RideStatus.accepted ||
-            ride.status == RideStatus.arriving ||
-            ride.status == RideStatus.inProgress)
+        .where(
+          (ride) =>
+              ride.status == RideStatus.accepted ||
+              ride.status == RideStatus.arriving ||
+              ride.status == RideStatus.inProgress,
+        )
         .length;
 
     return Container(
@@ -808,9 +812,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
       label: Text(label),
       selectedColor: Colors.amber,
       backgroundColor: Colors.black,
-      side: BorderSide(
-        color: isSelected ? Colors.amber : Colors.white24,
-      ),
+      side: BorderSide(color: isSelected ? Colors.amber : Colors.white24),
       labelStyle: TextStyle(
         color: isSelected ? Colors.black : Colors.white,
         fontWeight: FontWeight.bold,
@@ -831,9 +833,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
       label: Text(label),
       selectedColor: Colors.amber,
       backgroundColor: Colors.black,
-      side: BorderSide(
-        color: isSelected ? Colors.amber : Colors.white24,
-      ),
+      side: BorderSide(color: isSelected ? Colors.amber : Colors.white24),
       labelStyle: TextStyle(
         color: isSelected ? Colors.black : Colors.white,
         fontWeight: FontWeight.bold,
@@ -855,9 +855,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
       label: Text(label),
       selectedColor: Colors.amber,
       backgroundColor: Colors.black,
-      side: BorderSide(
-        color: isSelected ? Colors.amber : Colors.white24,
-      ),
+      side: BorderSide(color: isSelected ? Colors.amber : Colors.white24),
       labelStyle: TextStyle(
         color: isSelected ? Colors.black : Colors.white,
         fontWeight: FontWeight.bold,
@@ -875,7 +873,9 @@ class _AdminDashboardState extends State<AdminDashboard> {
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
         color: Colors.black,
-        border: Border.all(color: _statusColor(status).withOpacity(0.65)),
+        border: Border.all(
+          color: _statusColor(status).withAlpha((0.65 * 255).round()),
+        ),
         borderRadius: BorderRadius.circular(10),
       ),
       child: Row(
@@ -899,8 +899,10 @@ class _AdminDashboardState extends State<AdminDashboard> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: _statusColor(status).withOpacity(0.14),
-        border: Border.all(color: _statusColor(status).withOpacity(0.55)),
+        color: _statusColor(status).withAlpha((0.14 * 255).round()),
+        border: Border.all(
+          color: _statusColor(status).withAlpha((0.55 * 255).round()),
+        ),
         borderRadius: BorderRadius.circular(999),
       ),
       child: Text(
@@ -1077,16 +1079,18 @@ class _AdminDashboardState extends State<AdminDashboard> {
       return 'No ratings';
     }
 
-    final average = ratings.reduce((total, rating) => total + rating) /
-        ratings.length;
+    final average =
+        ratings.reduce((total, rating) => total + rating) / ratings.length;
     return '${average.toStringAsFixed(1)}/5';
   }
 
   String _driverStatusLabel(List<Ride> rides) {
-    final hasActiveRide = rides.any((ride) =>
-        ride.status == RideStatus.accepted ||
-        ride.status == RideStatus.arriving ||
-        ride.status == RideStatus.inProgress);
+    final hasActiveRide = rides.any(
+      (ride) =>
+          ride.status == RideStatus.accepted ||
+          ride.status == RideStatus.arriving ||
+          ride.status == RideStatus.inProgress,
+    );
 
     if (hasActiveRide) {
       return 'Busy';
@@ -1129,10 +1133,8 @@ class _AdminDashboardState extends State<AdminDashboard> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => RideDetailScreen(
-          ride: ride,
-          title: 'Admin Ride Details',
-        ),
+        builder: (context) =>
+            RideDetailScreen(ride: ride, title: 'Admin Ride Details'),
       ),
     );
   }
@@ -1206,7 +1208,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
   BoxDecoration _panelDecoration() {
     return BoxDecoration(
       color: const Color(0xFF12100B),
-      border: Border.all(color: Colors.amber.withOpacity(0.42)),
+      border: Border.all(color: Colors.amber.withAlpha((0.42 * 255).round())),
       borderRadius: BorderRadius.circular(12),
     );
   }

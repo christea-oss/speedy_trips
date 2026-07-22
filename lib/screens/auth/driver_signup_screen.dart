@@ -8,9 +8,6 @@ class DriverSignupScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const RoleAuthScreen(
-      role: UserRole.driver,
-      isSignup: true,
-    );
+    return const RoleAuthScreen(role: UserRole.driver, isSignup: true);
   }
 }

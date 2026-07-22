@@ -1,5 +1,4 @@
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 
 import '../../models/user_role.dart';
@@ -13,11 +12,7 @@ class RoleAuthScreen extends StatefulWidget {
   final UserRole role;
   final bool isSignup;
 
-  const RoleAuthScreen({
-    super.key,
-    required this.role,
-    required this.isSignup,
-  });
+  const RoleAuthScreen({super.key, required this.role, required this.isSignup});
 
   @override
   State<RoleAuthScreen> createState() => _RoleAuthScreenState();
@@ -172,15 +167,17 @@ class _RoleAuthScreenState extends State<RoleAuthScreen>
                   decoration: BoxDecoration(
                     color: const Color(0xFF12100B),
                     borderRadius: BorderRadius.circular(18),
-                    border: Border.all(color: Colors.amber.withOpacity(.5)),
+                    border: Border.all(
+                      color: Colors.amber.withAlpha((.5 * 255).round()),
+                    ),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.amber.withOpacity(.16),
+                        color: Colors.amber.withAlpha((.16 * 255).round()),
                         blurRadius: 28,
                         offset: const Offset(0, 14),
                       ),
                       BoxShadow(
-                        color: Colors.black.withOpacity(.62),
+                        color: Colors.black.withAlpha((.62 * 255).round()),
                         blurRadius: 34,
                         offset: const Offset(0, 20),
                       ),
@@ -282,11 +279,14 @@ class _RoleAuthScreenState extends State<RoleAuthScreen>
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.amber,
                             foregroundColor: Colors.black,
-                            disabledBackgroundColor:
-                                Colors.amber.withOpacity(.72),
+                            disabledBackgroundColor: Colors.amber.withAlpha(
+                              (.72 * 255).round(),
+                            ),
                             disabledForegroundColor: Colors.black87,
                             elevation: 10,
-                            shadowColor: Colors.amber.withOpacity(.35),
+                            shadowColor: Colors.amber.withAlpha(
+                              (.35 * 255).round(),
+                            ),
                             padding: const EdgeInsets.symmetric(vertical: 16),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(10),
@@ -393,14 +393,16 @@ class _AuthTextField extends StatelessWidget {
         prefixIcon: Icon(icon, color: Colors.amber),
         suffixIcon: suffixIcon,
         filled: true,
-        fillColor: Colors.white.withOpacity(.08),
+        fillColor: Colors.white.withAlpha((.08 * 255).round()),
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 16,
           vertical: 16,
         ),
         disabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Colors.white.withOpacity(.16)),
+          borderSide: BorderSide(
+            color: Colors.white.withAlpha((.16 * 255).round()),
+          ),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),

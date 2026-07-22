@@ -37,7 +37,8 @@ void main() {
   });
 
   setUp(() async {
-    email = 'speedytrips.e2e.${DateTime.now().microsecondsSinceEpoch}'
+    email =
+        'speedytrips.e2e.${DateTime.now().microsecondsSinceEpoch}'
         '@example.com';
     cleanupRideId = null;
     cleanupUserUid = null;

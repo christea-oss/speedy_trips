@@ -54,9 +54,7 @@ class _TripCompleteState extends State<TripComplete> {
       }
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Saved $rating-star driver rating.'),
-        ),
+        SnackBar(content: Text('Saved $rating-star driver rating.')),
       );
 
       setState(() {
@@ -68,11 +66,9 @@ class _TripCompleteState extends State<TripComplete> {
         return;
       }
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Rating was not saved: $error'),
-        ),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Rating was not saved: $error')));
     } finally {
       if (mounted) {
         setState(() {
@@ -95,10 +91,7 @@ class _TripCompleteState extends State<TripComplete> {
 
     return IconButton(
       tooltip: '$index star rating',
-      constraints: const BoxConstraints(
-        minWidth: 44,
-        minHeight: 44,
-      ),
+      constraints: const BoxConstraints(minWidth: 44, minHeight: 44),
       padding: EdgeInsets.zero,
       onPressed: ratingSaving ? null : () => selectRating(index),
       icon: Icon(
@@ -111,8 +104,9 @@ class _TripCompleteState extends State<TripComplete> {
 
   @override
   Widget build(BuildContext context) {
-    final vehicleLabel =
-        widget.vehicleType == "black_suv" ? "Black SUV" : "Black Ride";
+    final vehicleLabel = widget.vehicleType == "black_suv"
+        ? "Black SUV"
+        : "Black Ride";
 
     return Scaffold(
       backgroundColor: Colors.black,
@@ -132,7 +126,7 @@ class _TripCompleteState extends State<TripComplete> {
                 width: 90,
                 height: 90,
                 decoration: BoxDecoration(
-                  color: Colors.green.withOpacity(.2),
+                  color: Colors.green.withAlpha((.2 * 255).round()),
                   shape: BoxShape.circle,
                 ),
                 child: const Icon(
@@ -144,10 +138,7 @@ class _TripCompleteState extends State<TripComplete> {
               const SizedBox(height: 20),
               const Text(
                 "Thanks for riding with",
-                style: TextStyle(
-                  color: Colors.white70,
-                  fontSize: 18,
-                ),
+                style: TextStyle(color: Colors.white70, fontSize: 18),
               ),
               const Text(
                 "SpeedyTrips",
@@ -196,7 +187,9 @@ class _TripCompleteState extends State<TripComplete> {
                 decoration: BoxDecoration(
                   color: Colors.white10,
                   borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: Colors.amber.withOpacity(.45)),
+                  border: Border.all(
+                    color: Colors.amber.withAlpha((.45 * 255).round()),
+                  ),
                 ),
                 child: Column(
                   children: [
@@ -230,10 +223,7 @@ class _TripCompleteState extends State<TripComplete> {
                     else
                       const Text(
                         "Tap a star to save your rating",
-                        style: TextStyle(
-                          color: Colors.white70,
-                          fontSize: 14,
-                        ),
+                        style: TextStyle(color: Colors.white70, fontSize: 14),
                         textAlign: TextAlign.center,
                       ),
                   ],

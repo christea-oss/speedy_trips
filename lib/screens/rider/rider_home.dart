@@ -17,8 +17,7 @@ class RiderHome extends StatefulWidget {
 }
 
 class _RiderHomeState extends State<RiderHome> {
-  static const String airportLocation =
-      'BHM Airport - Door 4L or DL-Door 4L';
+  static const String airportLocation = 'BHM Airport - Door 4L or DL-Door 4L';
   static const String statewideZone = 'Zone 8 - Alabama Statewide';
 
   final TextEditingController pickupController = TextEditingController();
@@ -27,7 +26,8 @@ class _RiderHomeState extends State<RiderHome> {
   final Map<String, int> zonePricing = PricingEngine.zoneBaseFares;
 
   final Map<String, String> zoneCoverage = {
-    'Zone 1 - Central Birmingham': 'Downtown, UAB, Southside, Five Points, BJCC',
+    'Zone 1 - Central Birmingham':
+        'Downtown, UAB, Southside, Five Points, BJCC',
     'Zone 2 - South Metro': 'Homewood, Vestavia, Mountain Brook, Brookwood',
     'Zone 3 - Hoover Corridor': 'Hoover, Riverchase, Pelham, Alabaster',
     'Zone 4 - North Corridor': 'Gardendale, Fultondale, Warrior, Morris',
@@ -192,10 +192,7 @@ class _RiderHomeState extends State<RiderHome> {
     return statewideZone;
   }
 
-  String? zoneForTrip({
-    required String pickup,
-    required String dropoff,
-  }) {
+  String? zoneForTrip({required String pickup, required String dropoff}) {
     final cleanPickup = pickup.trim();
     final cleanDropoff = dropoff.trim();
 
@@ -340,16 +337,16 @@ class _RiderHomeState extends State<RiderHome> {
     }
 
     if (isScheduled && selectedDate == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select a date')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Please select a date')));
       return;
     }
 
     if (isScheduled && selectedTime == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select a time')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Please select a time')));
       return;
     }
 
@@ -384,19 +381,19 @@ class _RiderHomeState extends State<RiderHome> {
           content: Text(
             isScheduled
                 ? 'Pickup: $pickupLocation\n'
-                    'Dropoff: $dropoffLocation\n'
-                    'Service Area: $selectedServiceAreaName\n'
-                    'Vehicle: ${vehicleType == "black_ride" ? "Black Ride" : "Black SUV"}\n'
-                    'Type: $rideTypeLabel\n'
-                    'Date: ${selectedDate!.month}/${selectedDate!.day}/${selectedDate!.year}\n'
-                    'Time: ${selectedTime!.format(dialogContext)}\n'
-                    '\n$fareSummary'
+                      'Dropoff: $dropoffLocation\n'
+                      'Service Area: $selectedServiceAreaName\n'
+                      'Vehicle: ${vehicleType == "black_ride" ? "Black Ride" : "Black SUV"}\n'
+                      'Type: $rideTypeLabel\n'
+                      'Date: ${selectedDate!.month}/${selectedDate!.day}/${selectedDate!.year}\n'
+                      'Time: ${selectedTime!.format(dialogContext)}\n'
+                      '\n$fareSummary'
                 : 'Pickup: $pickupLocation\n'
-                    'Dropoff: $dropoffLocation\n'
-                    'Service Area: $selectedServiceAreaName\n'
-                    'Vehicle: ${vehicleType == "black_ride" ? "Black Ride" : "Black SUV"}\n'
-                    'Type: $rideTypeLabel\n'
-                    '\n$fareSummary',
+                      'Dropoff: $dropoffLocation\n'
+                      'Service Area: $selectedServiceAreaName\n'
+                      'Vehicle: ${vehicleType == "black_ride" ? "Black Ride" : "Black SUV"}\n'
+                      'Type: $rideTypeLabel\n'
+                      '\n$fareSummary',
           ),
           actions: [
             TextButton(
@@ -557,9 +554,7 @@ class _RiderHomeState extends State<RiderHome> {
                   onPressed: () {
                     Navigator.push(
                       context,
-                      MaterialPageRoute(
-                        builder: (context) => const MyRides(),
-                      ),
+                      MaterialPageRoute(builder: (context) => const MyRides()),
                     );
                   },
                   child: const Text(
@@ -596,10 +591,7 @@ class _RiderHomeState extends State<RiderHome> {
                 ),
               ],
               const SizedBox(height: 16),
-              const Text(
-                'Where to?',
-                style: TextStyle(color: Colors.white70),
-              ),
+              const Text('Where to?', style: TextStyle(color: Colors.white70)),
               const SizedBox(height: 6),
               TextField(
                 controller: dropoffController,
@@ -634,7 +626,7 @@ class _RiderHomeState extends State<RiderHome> {
               const SizedBox(height: 10),
               DropdownButtonFormField<String>(
                 key: ValueKey(selectedZone ?? 'service-area-empty'),
-                value: selectedZone,
+                initialValue: selectedZone,
                 isExpanded: true,
                 dropdownColor: Colors.black,
                 decoration: InputDecoration(
@@ -745,24 +737,15 @@ class _RiderHomeState extends State<RiderHome> {
                   ),
                 ),
                 const SizedBox(height: 12),
-                _vehicleCard(
-                  label: 'Black Ride',
-                  type: 'black_ride',
-                ),
+                _vehicleCard(label: 'Black Ride', type: 'black_ride'),
                 const SizedBox(height: 12),
-                _vehicleCard(
-                  label: 'Black SUV',
-                  type: 'black_suv',
-                ),
+                _vehicleCard(label: 'Black SUV', type: 'black_suv'),
                 const SizedBox(height: 16),
                 fareSummaryCard(currentFareEstimate, serviceAreaText),
                 const SizedBox(height: 20),
                 Text(
                   tripSummaryText(serviceAreaText),
-                  style: const TextStyle(
-                    color: Colors.white70,
-                    fontSize: 16,
-                  ),
+                  style: const TextStyle(color: Colors.white70, fontSize: 16),
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 20),
@@ -770,9 +753,7 @@ class _RiderHomeState extends State<RiderHome> {
                   width: double.infinity,
                   child: ElevatedButton(
                     onPressed: handleConfirmRide,
-                    child: Text(
-                      isScheduled ? 'Schedule Ride' : 'Confirm Ride',
-                    ),
+                    child: Text(isScheduled ? 'Schedule Ride' : 'Confirm Ride'),
                   ),
                 ),
               ],
@@ -783,10 +764,7 @@ class _RiderHomeState extends State<RiderHome> {
     );
   }
 
-  Widget _vehicleCard({
-    required String label,
-    required String type,
-  }) {
+  Widget _vehicleCard({required String label, required String type}) {
     final selected = vehicleType == type;
 
     return InkWell(
@@ -799,7 +777,9 @@ class _RiderHomeState extends State<RiderHome> {
         width: double.infinity,
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: selected ? Colors.amber.withOpacity(.15) : Colors.white10,
+          color: selected
+              ? Colors.amber.withAlpha((.15 * 255).round())
+              : Colors.white10,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: selected ? Colors.amber : Colors.white24,
@@ -838,7 +818,7 @@ class _RiderHomeState extends State<RiderHome> {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: const Color(0xFF12100B),
-        border: Border.all(color: Colors.amber.withOpacity(0.42)),
+        border: Border.all(color: Colors.amber.withAlpha((0.42 * 255).round())),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
@@ -889,7 +869,7 @@ class _RiderHomeState extends State<RiderHome> {
       decoration: BoxDecoration(
         color: Colors.white10,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.amber.withOpacity(.4)),
+        border: Border.all(color: Colors.amber.withAlpha((.4 * 255).round())),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -966,20 +946,20 @@ class _RiderHomeState extends State<RiderHome> {
 
   String tripSummaryText(String serviceAreaText) {
     if (!isScheduled) {
-      return 'Ride Now Trip: ${currentPickupLocation} to '
-          '${currentDropoffLocation} - $serviceAreaText - '
+      return 'Ride Now Trip: $currentPickupLocation to '
+          '$currentDropoffLocation - $serviceAreaText - '
           '${PricingEngine.formatCurrency(currentFare)}';
     }
 
     if (selectedDate == null || selectedTime == null) {
-      return 'Scheduled Trip: ${currentPickupLocation} to '
-          '${currentDropoffLocation} - $serviceAreaText - '
+      return 'Scheduled Trip: $currentPickupLocation to '
+          '$currentDropoffLocation - $serviceAreaText - '
           'Select date and time - '
           '${PricingEngine.formatCurrency(currentFare)}';
     }
 
-    return 'Scheduled Trip: ${currentPickupLocation} to '
-        '${currentDropoffLocation} - $serviceAreaText - '
+    return 'Scheduled Trip: $currentPickupLocation to '
+        '$currentDropoffLocation - $serviceAreaText - '
         '${selectedDate!.month}/${selectedDate!.day}/${selectedDate!.year} '
         'at ${selectedTime!.format(context)} - '
         '${PricingEngine.formatCurrency(currentFare)}';

@@ -1,8 +1,4 @@
-enum UserRole {
-  rider,
-  driver,
-  admin,
-}
+enum UserRole { rider, driver, admin }
 
 extension UserRoleLabel on UserRole {
   String get id {

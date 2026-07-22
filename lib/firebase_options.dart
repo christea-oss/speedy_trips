@@ -24,8 +24,7 @@ class DefaultFirebaseOptions {
   static const String projectId = 'speedytrips-5b584';
   static const String messagingSenderId = '677273835452';
   static const String storageBucket = 'speedytrips-5b584.firebasestorage.app';
-  static const String androidApiKey =
-      'AIzaSyB2a9bW-SBgXklKRy_7K2HAbrWXfSalk4k';
+  static const String androidApiKey = 'AIzaSyB2a9bW-SBgXklKRy_7K2HAbrWXfSalk4k';
   static const String androidAppId =
       '1:677273835452:android:7cf76bd04d4b98e0acfdb9';
 

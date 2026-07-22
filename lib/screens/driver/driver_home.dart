@@ -9,11 +9,7 @@ import '../../services/auth_service.dart';
 import '../auth/role_selection_screen.dart';
 import '../shared/ride_detail_screen.dart';
 
-enum DriverAvailability {
-  offline,
-  online,
-  busy,
-}
+enum DriverAvailability { offline, online, busy }
 
 extension DriverAvailabilityLabel on DriverAvailability {
   String get label {
@@ -42,10 +38,7 @@ extension DriverAvailabilityLabel on DriverAvailability {
 class DriverHome extends StatefulWidget {
   final Ride? ride;
 
-  const DriverHome({
-    super.key,
-    this.ride,
-  });
+  const DriverHome({super.key, this.ride});
 
   @override
   State<DriverHome> createState() => _DriverHomeState();
@@ -97,9 +90,9 @@ class _DriverHomeState extends State<DriverHome> {
         availability = DriverAvailability.busy;
       });
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Ride accepted.')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Ride accepted.')));
     } catch (error) {
       if (!mounted) return;
 
@@ -116,11 +109,9 @@ class _DriverHomeState extends State<DriverHome> {
       declinedRideIds.add(ride.id);
     });
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Ride declined'),
-      ),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Ride declined')));
   }
 
   Future<void> completeTrip(Ride ride) async {
@@ -128,9 +119,9 @@ class _DriverHomeState extends State<DriverHome> {
 
     if (!mounted) return;
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Trip completed.')),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Trip completed.')));
   }
 
   void findNextRide() {
@@ -218,17 +209,21 @@ class _DriverHomeState extends State<DriverHome> {
                     .where((ride) => !ride.isScheduled)
                     .toList();
                 final activeRides = assignedRides
-                    .where((ride) =>
-                        ride.status == RideStatus.accepted ||
-                        ride.status == RideStatus.arriving ||
-                        ride.status == RideStatus.inProgress)
+                    .where(
+                      (ride) =>
+                          ride.status == RideStatus.accepted ||
+                          ride.status == RideStatus.arriving ||
+                          ride.status == RideStatus.inProgress,
+                    )
                     .toList();
                 final completedRides = assignedRides
                     .where((ride) => ride.status == RideStatus.completed)
                     .toList();
-                final effectiveAvailability =
-                    activeRides.isEmpty ? availability : DriverAvailability.busy;
-                final canAcceptNewRequests = activeRides.isEmpty &&
+                final effectiveAvailability = activeRides.isEmpty
+                    ? availability
+                    : DriverAvailability.busy;
+                final canAcceptNewRequests =
+                    activeRides.isEmpty &&
                     availability == DriverAvailability.online;
 
                 return SingleChildScrollView(
@@ -284,7 +279,8 @@ class _DriverHomeState extends State<DriverHome> {
                           const SizedBox(height: 22),
                           _rideSection(
                             title: 'Active Rides',
-                            subtitle: 'Accepted, arriving, and in-progress trips',
+                            subtitle:
+                                'Accepted, arriving, and in-progress trips',
                             emptyText: 'No active rides',
                             rides: activeRides,
                             builder: _activeRideCard,
@@ -437,12 +433,15 @@ class _DriverHomeState extends State<DriverHome> {
     required List<Ride> pendingRides,
   }) {
     final today = DateTime.now();
-    final todaysRides =
-        assignedRides.where((ride) => _isSameDay(ride.createdAt, today)).length;
+    final todaysRides = assignedRides
+        .where((ride) => _isSameDay(ride.createdAt, today))
+        .length;
     final completedToday = assignedRides
-        .where((ride) =>
-            ride.status == RideStatus.completed &&
-            _isSameDay(ride.createdAt, today))
+        .where(
+          (ride) =>
+              ride.status == RideStatus.completed &&
+              _isSameDay(ride.createdAt, today),
+        )
         .length;
 
     return LayoutBuilder(
@@ -451,7 +450,11 @@ class _DriverHomeState extends State<DriverHome> {
         final cards = [
           _metricCard('Today\'s Rides', todaysRides.toString(), Icons.today),
           _metricCard('Completed', completedToday.toString(), Icons.done_all),
-          _metricCard('Pending', pendingRides.length.toString(), Icons.schedule),
+          _metricCard(
+            'Pending',
+            pendingRides.length.toString(),
+            Icons.schedule,
+          ),
         ];
 
         if (!isWide) {
@@ -681,10 +684,7 @@ class _DriverHomeState extends State<DriverHome> {
   }
 
   Widget _activeRideCard(Ride ride) {
-    return _rideCard(
-      ride: ride,
-      actions: _activeRideActions(ride),
-    );
+    return _rideCard(ride: ride, actions: _activeRideActions(ride));
   }
 
   Widget _completedRideCard(Ride ride) {
@@ -740,9 +740,9 @@ class _DriverHomeState extends State<DriverHome> {
 
               if (!mounted) return;
 
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Trip started')),
-              );
+              ScaffoldMessenger.of(
+                context,
+              ).showSnackBar(const SnackBar(content: Text('Trip started')));
             },
             child: const Text('Start Trip', style: TextStyle(fontSize: 16)),
           ),
@@ -765,16 +765,13 @@ class _DriverHomeState extends State<DriverHome> {
     }
   }
 
-  Widget _rideCard({
-    required Ride ride,
-    required List<Widget> actions,
-  }) {
+  Widget _rideCard({required Ride ride, required List<Widget> actions}) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.black,
-        border: Border.all(color: Colors.amber.withOpacity(0.45)),
+        border: Border.all(color: Colors.amber.withAlpha((0.45 * 255).round())),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
@@ -832,7 +829,8 @@ class _DriverHomeState extends State<DriverHome> {
         fallback: 'Unknown rider',
       ),
       builder: (context, snapshot) {
-        final riderName = snapshot.data ??
+        final riderName =
+            snapshot.data ??
             (ride.riderId == null ? 'Unknown rider' : 'Loading...');
 
         return Container(
@@ -960,8 +958,8 @@ class _DriverHomeState extends State<DriverHome> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: Colors.amber.withOpacity(0.14),
-        border: Border.all(color: Colors.amber.withOpacity(0.5)),
+        color: Colors.amber.withAlpha((0.14 * 255).round()),
+        border: Border.all(color: Colors.amber.withAlpha((0.5 * 255).round())),
         borderRadius: BorderRadius.circular(999),
       ),
       child: Text(
@@ -978,7 +976,7 @@ class _DriverHomeState extends State<DriverHome> {
   BoxDecoration _panelDecoration() {
     return BoxDecoration(
       color: const Color(0xFF12100B),
-      border: Border.all(color: Colors.amber.withOpacity(0.42)),
+      border: Border.all(color: Colors.amber.withAlpha((0.42 * 255).round())),
       borderRadius: BorderRadius.circular(12),
     );
   }
@@ -987,10 +985,8 @@ class _DriverHomeState extends State<DriverHome> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => RideDetailScreen(
-          ride: ride,
-          title: 'Driver Ride Details',
-        ),
+        builder: (context) =>
+            RideDetailScreen(ride: ride, title: 'Driver Ride Details'),
       ),
     );
   }
@@ -1045,9 +1041,7 @@ class _DriverHomeState extends State<DriverHome> {
       disabledBackgroundColor: Colors.white24,
       disabledForegroundColor: Colors.white54,
       padding: const EdgeInsets.symmetric(vertical: 14),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(10),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
     );
   }
 
@@ -1056,9 +1050,7 @@ class _DriverHomeState extends State<DriverHome> {
       backgroundColor: Colors.green,
       foregroundColor: Colors.white,
       padding: const EdgeInsets.symmetric(vertical: 14),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(10),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
     );
   }
 
@@ -1067,9 +1059,7 @@ class _DriverHomeState extends State<DriverHome> {
       foregroundColor: Colors.white,
       side: const BorderSide(color: Colors.white54),
       padding: const EdgeInsets.symmetric(vertical: 14),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(10),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
     );
   }
 
@@ -1094,8 +1084,8 @@ class _DriverHomeState extends State<DriverHome> {
       return 'No ratings';
     }
 
-    final average = ratings.reduce((total, rating) => total + rating) /
-        ratings.length;
+    final average =
+        ratings.reduce((total, rating) => total + rating) / ratings.length;
     return '${average.toStringAsFixed(1)}/5';
   }
 
@@ -1116,12 +1106,11 @@ class _DriverHomeState extends State<DriverHome> {
   }
 
   List<Ride> _sortScheduledRides(List<Ride> rides) {
-    return rides
-      ..sort((a, b) {
-        final first = a.effectiveScheduledDateTime ?? a.createdAt;
-        final second = b.effectiveScheduledDateTime ?? b.createdAt;
-        return first.compareTo(second);
-      });
+    return rides..sort((a, b) {
+      final first = a.effectiveScheduledDateTime ?? a.createdAt;
+      final second = b.effectiveScheduledDateTime ?? b.createdAt;
+      return first.compareTo(second);
+    });
   }
 
   String _scheduledDateLabel(Ride ride) {

@@ -26,15 +26,14 @@ class AdminRepository {
       return Stream.value(const <AppUser>[]);
     }
 
-    return _users
-        .where('role', isEqualTo: UserRole.driver.id)
-        .snapshots()
-        .map((snapshot) {
+    return _users.where('role', isEqualTo: UserRole.driver.id).snapshots().map((
+      snapshot,
+    ) {
       final drivers = snapshot.docs.map(_userFromSnapshot).toList()
         ..sort((a, b) {
-          final nameCompare = a.displayName
-              .toLowerCase()
-              .compareTo(b.displayName.toLowerCase());
+          final nameCompare = a.displayName.toLowerCase().compareTo(
+            b.displayName.toLowerCase(),
+          );
           if (nameCompare != 0) return nameCompare;
           return a.email.toLowerCase().compareTo(b.email.toLowerCase());
         });

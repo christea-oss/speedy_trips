@@ -42,8 +42,7 @@ class PricingEngine {
 
     return FareEstimate(
       baseFare: zone == null ? 0 : zoneBaseFares[zone] ?? 0,
-      airportPickupFee:
-          isAirportPickup(pickupLocation) ? airportPickupFee : 0,
+      airportPickupFee: isAirportPickup(pickupLocation) ? airportPickupFee : 0,
       scheduledRideFee: isScheduledRide ? scheduledRideFee : 0,
     );
   }

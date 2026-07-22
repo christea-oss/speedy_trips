@@ -8,9 +8,6 @@ class RiderSignupScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const RoleAuthScreen(
-      role: UserRole.rider,
-      isSignup: true,
-    );
+    return const RoleAuthScreen(role: UserRole.rider, isSignup: true);
   }
 }
