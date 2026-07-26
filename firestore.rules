@@ -1,0 +1,111 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isSelf(uid) {
+      return signedIn() && request.auth.uid == uid;
+    }
+
+    function ownProfileExists() {
+      return signedIn() &&
+        exists(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
+    function isAdmin() {
+      return ownProfileExists() &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    function validUserRole(role) {
+      return role in ['rider', 'driver', 'admin'];
+    }
+
+    function rideOwnedByUser() {
+      return signedIn() && (
+        resource.data.riderId == request.auth.uid ||
+        resource.data.riderUid == request.auth.uid
+      );
+    }
+
+    function rideAssignedToUser() {
+      return signedIn() && (
+        resource.data.assignedDriver == request.auth.uid ||
+        resource.data.driverId == request.auth.uid
+      );
+    }
+
+    function rideStatusIs(value) {
+      return resource.data.status == value;
+    }
+
+    function requestedStatusIs(value) {
+      return request.resource.data.status == value;
+    }
+
+    function validRideCreate() {
+      return request.resource.data.riderId == request.auth.uid &&
+        requestedStatusIs('pending') &&
+        request.resource.data.zone is string &&
+        request.resource.data.pickupLocation is string &&
+        request.resource.data.dropoffLocation is string &&
+        request.resource.data.vehicleType is string &&
+        request.resource.data.rideType is string &&
+        request.resource.data.fare is int;
+    }
+
+    function riderCanEditPendingRide() {
+      return rideOwnedByUser() &&
+        rideStatusIs('pending') &&
+        requestedStatusIs('pending') &&
+        resource.data.assignedDriver == null;
+    }
+
+    function riderCanCancelPendingRide() {
+      return rideOwnedByUser() &&
+        rideStatusIs('pending') &&
+        requestedStatusIs('cancelled') &&
+        resource.data.assignedDriver == null;
+    }
+
+    function driverCanAcceptPendingRide() {
+      return signedIn() &&
+        rideStatusIs('pending') &&
+        resource.data.assignedDriver == null &&
+        requestedStatusIs('accepted') &&
+        request.resource.data.assignedDriver == request.auth.uid &&
+        request.resource.data.driverId == request.auth.uid;
+    }
+
+    function driverCanAdvanceAssignedRide() {
+      return rideAssignedToUser() && (
+        (rideStatusIs('accepted') && requestedStatusIs('arriving')) ||
+        (rideStatusIs('arriving') && requestedStatusIs('in_progress')) ||
+        (rideStatusIs('in_progress') && requestedStatusIs('completed'))
+      );
+    }
+
+    match /users/{uid} {
+      allow create: if isSelf(uid) && validUserRole(request.resource.data.role);
+      allow get: if isSelf(uid) || isAdmin();
+      allow list: if isAdmin();
+      allow update: if (isSelf(uid) || isAdmin()) && validUserRole(request.resource.data.role);
+      allow delete: if false;
+    }
+
+    match /rides/{rideId} {
+      allow create: if signedIn() && validRideCreate();
+      allow get: if isAdmin() || rideOwnedByUser() || rideAssignedToUser();
+      allow list: if isAdmin() || rideOwnedByUser() || rideAssignedToUser();
+      allow update: if isAdmin() || riderCanEditPendingRide() || riderCanCancelPendingRide() || driverCanAcceptPendingRide() || driverCanAdvanceAssignedRide();
+      allow delete: if false;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
