@@ -116,8 +116,9 @@ void main() {
       role: UserRole.rider,
     );
     await tester.pumpWidget(const MaterialApp(home: AuthGate()));
-    await tester.pumpAndSettle();
+    await tester.pump();
     expect(find.byType(RiderHome), findsOneWidget);
+    await tester.pumpWidget(const SizedBox.shrink());
 
     await signOutAndResetAuth();
     await AuthService.instance.signInWithEmail(
@@ -126,8 +127,9 @@ void main() {
       role: UserRole.driver,
     );
     await tester.pumpWidget(const MaterialApp(home: AuthGate()));
-    await tester.pumpAndSettle();
+    await tester.pump();
     expect(find.byType(DriverHome), findsOneWidget);
+    await tester.pumpWidget(const SizedBox.shrink());
 
     await signOutAndResetAuth();
     await AuthService.instance.signInWithEmail(
@@ -136,8 +138,9 @@ void main() {
       role: UserRole.admin,
     );
     await tester.pumpWidget(const MaterialApp(home: AuthGate()));
-    await tester.pumpAndSettle();
+    await tester.pump();
     expect(find.byType(AdminDashboard), findsOneWidget);
+    await tester.pumpWidget(const SizedBox.shrink());
   });
 
   testWidgets('unauthorized profile access is denied', (tester) async {

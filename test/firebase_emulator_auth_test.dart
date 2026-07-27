@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:integration_test/integration_test.dart';
 import 'package:speedy_trips/models/user_role.dart';
 import 'package:speedy_trips/screens/admin/admin_dashboard.dart';
 import 'package:speedy_trips/screens/auth/auth_gate.dart';
@@ -12,7 +13,7 @@ import 'package:speedy_trips/services/auth_service.dart';
 import 'support/firebase_emulator_helpers.dart';
 
 void main() {
-  TestWidgetsFlutterBinding.ensureInitialized();
+  IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
   String? riderUid;
   String? driverUid;
