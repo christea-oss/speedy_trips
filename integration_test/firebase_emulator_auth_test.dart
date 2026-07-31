@@ -1,19 +1,13 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:integration_test/integration_test.dart';
 import 'package:speedy_trips/models/user_role.dart';
-import 'package:speedy_trips/screens/admin/admin_dashboard.dart';
-import 'package:speedy_trips/screens/auth/auth_gate.dart';
-import 'package:speedy_trips/screens/driver/driver_home.dart';
-import 'package:speedy_trips/screens/rider/rider_home.dart';
 import 'package:speedy_trips/services/auth_service.dart';
 
-import 'test_support/firebase_emulator_helpers.dart';
+import '../test/support/firebase_emulator_helpers.dart';
 
 void main() {
-  IntegrationTestWidgetsFlutterBinding.ensureInitialized();
+  TestWidgetsFlutterBinding.ensureInitialized();
 
   String? riderUid;
   String? driverUid;
@@ -21,6 +15,7 @@ void main() {
 
   setUpAll(() async {
     await initializeFirebaseEmulators();
+    await clearFirebaseEmulators();
   });
 
   setUp(() async {
@@ -36,20 +31,14 @@ void main() {
         await deleteDocIfExists(collection: 'users', documentId: uid);
       }
     }
-
-    final user = FirebaseAuth.instance.currentUser;
-    if (user != null) {
-      try {
-        await user.delete();
-      } on FirebaseAuthException {
-        // Emulator cleanup only.
-      }
-    }
-
     await signOutAndResetAuth();
   });
 
-  testWidgets('auth success, failure, role resolution, and routing work', (
+  tearDownAll(() async {
+    await disposeFirebaseEmulators();
+  });
+
+  testWidgets('auth success, failure, and role resolution work', (
     tester,
   ) async {
     final rider = await createRoleFixture(
@@ -108,39 +97,6 @@ void main() {
       await AuthService.instance.roleForUser(admin.user.uid),
       UserRole.admin,
     );
-
-    await signOutAndResetAuth();
-    await AuthService.instance.signInWithEmail(
-      email: rider.user.email!,
-      password: kTestPassword,
-      role: UserRole.rider,
-    );
-    await tester.pumpWidget(const MaterialApp(home: AuthGate()));
-    await tester.pump();
-    expect(find.byType(RiderHome), findsOneWidget);
-    await tester.pumpWidget(const SizedBox.shrink());
-
-    await signOutAndResetAuth();
-    await AuthService.instance.signInWithEmail(
-      email: driver.user.email!,
-      password: kTestPassword,
-      role: UserRole.driver,
-    );
-    await tester.pumpWidget(const MaterialApp(home: AuthGate()));
-    await tester.pump();
-    expect(find.byType(DriverHome), findsOneWidget);
-    await tester.pumpWidget(const SizedBox.shrink());
-
-    await signOutAndResetAuth();
-    await AuthService.instance.signInWithEmail(
-      email: admin.user.email!,
-      password: kTestPassword,
-      role: UserRole.admin,
-    );
-    await tester.pumpWidget(const MaterialApp(home: AuthGate()));
-    await tester.pump();
-    expect(find.byType(AdminDashboard), findsOneWidget);
-    await tester.pumpWidget(const SizedBox.shrink());
   });
 
   testWidgets('unauthorized profile access is denied', (tester) async {

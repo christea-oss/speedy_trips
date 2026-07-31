@@ -1,18 +1,18 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:integration_test/integration_test.dart';
 import 'package:speedy_trips/models/user_role.dart';
 import 'package:speedy_trips/services/auth_service.dart';
 
-import 'test_support/firebase_emulator_helpers.dart';
+import '../test/support/firebase_emulator_helpers.dart';
 
 void main() {
-  IntegrationTestWidgetsFlutterBinding.ensureInitialized();
+  TestWidgetsFlutterBinding.ensureInitialized();
 
   String? riderUid;
 
   setUpAll(() async {
     await initializeFirebaseEmulators();
+    await clearFirebaseEmulators();
   });
 
   setUp(() async {
@@ -25,6 +25,10 @@ void main() {
       await deleteDocIfExists(collection: 'users', documentId: riderUid!);
     }
     await signOutAndResetAuth();
+  });
+
+  tearDownAll(() async {
+    await disposeFirebaseEmulators();
   });
 
   testWidgets('non-user collections remain denied', (tester) async {
